@@ -1,28 +1,23 @@
-name: Build CS2 Plugin
+name: Build Plugin (.NET 10)
 
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: windows-latest # 根據你的 Windows 環境設定
+    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Setup .NET
+    - name: Setup .NET 10 SDK
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 8.0.x # CS2 插件通常使用 .NET 8.0
+        dotnet-version: '10.0.x'
+        cache: true             
 
-    - name: Build with dotnet
-      run: dotnet build --configuration Release
+    - name: Restore dependencies
+      run: dotnet restore
 
-    - name: Upload Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: SLAYER_PanoramaVote-Plugin
-        path: bin/Release/net8.0/ # 請根據你實際產出的路徑調整
+    - name: Build Project
+      # 🚀 新增防死鎖參數：停用背景並行編譯，防止虛擬機記憶體死鎖轉圈圈
+      run: dotnet build --no-restore --configuration Release /p:UseSharedCompilation=false /p:BuildInParallel=false
