@@ -13,11 +13,13 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '10.0.x'
-        cache: true             
+        cache: true
+        # 🎯 解決找不到 packages.lock.json 的關鍵：指定比對專案檔
+        cache-dependency-path: '**/SLAYER_PanoramaVote.csproj'
 
     - name: Restore dependencies
       run: dotnet restore
 
     - name: Build Project
-      # 🚀 新增防死鎖參數：停用背景並行編譯，防止虛擬機記憶體死鎖轉圈圈
+      # 🚀 防死鎖參數：停用背景並行編譯，防止虛擬機記憶體死鎖轉圈圈
       run: dotnet build --no-restore --configuration Release /p:UseSharedCompilation=false /p:BuildInParallel=false
