@@ -1,0 +1,28 @@
+name: Build CS2 Plugin
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: windows-latest # 根據你的 Windows 環境設定
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x # CS2 插件通常使用 .NET 8.0
+
+    - name: Build with dotnet
+      run: dotnet build --configuration Release
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: SLAYER_PanoramaVote-Plugin
+        path: bin/Release/net8.0/ # 請根據你實際產出的路徑調整
