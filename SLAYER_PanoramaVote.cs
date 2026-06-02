@@ -21,7 +21,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
     
     private double _lastVoteTime = 0.0; 
     private const double CooldownTime = 120.0; // 冷卻時間 120 秒
-    private const int MinPlayersRequired = 2; // 最低人數限制為 2 人
+    private const int MinPlayersRequired = 6; // 最低人數限制為 2 人
 
     private readonly string[] _allowedMaps = { 
         "de_mirage", 
@@ -30,7 +30,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         "de_nuke", 
         "de_anubis", 
         "de_ancient", 
-        "de_vertigo" 
+        "de_overpass" 
     };
 
     public override void Load(bool hotReload)
@@ -44,7 +44,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
 		});
     }
 
-    // 🎯 最新版 v369 標準寫法：直接使用 ConsoleCommand 攔截全服聊天 say 指令
+    // ConsoleCommand 攔截全服聊天 say 指令
     [ConsoleCommand("say", "攔截公頻聊天")]
     public void OnPlayerSay(CCSPlayerController? player, CommandInfo info)
     {
@@ -61,7 +61,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         }
     }
 
-    // 🎯 最新版 v369 標準寫法：直接使用 ConsoleCommand 攔截團隊聊天 say_team 指令
+    // ConsoleCommand 攔截團隊聊天 say_team 指令
     [ConsoleCommand("say_team", "攔截團隊聊天")]
     public void OnPlayerSayTeam(CCSPlayerController? player, CommandInfo info)
     {
@@ -113,7 +113,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
 
         if (activePlayerCount < MinPlayersRequired)
         {
-            player.PrintToChat($" {Prefix} 人 數 不 足！需 要 {ChatColors.Yellow}6 人 {ChatColors.White}以 上 才 能 發 起 投 票");
+            player.PrintToChat($" {Prefix} 人 數 不 足！需 要 {ChatColors.Green}6 人 {ChatColors.White}以 上 才 能 發 起 投 票");
             return;
         }
 
@@ -122,14 +122,14 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         if (currentTime - _lastVoteTime < CooldownTime)
         {
             int timeLeft = (int)Math.Ceiling(CooldownTime - (currentTime - _lastVoteTime));
-            player.PrintToChat($" {Prefix} 投 票 冷 輕 中 請 等 待 {ChatColors.Yellow}{timeLeft} {ChatColors.White}秒 後 再 試。");
+            player.PrintToChat($" {Prefix} 投 票 冷 卻 中 請 等 待 {ChatColors.Green}{timeLeft} {ChatColors.White}秒 後 再 試。");
             return;
         }
 
         // 1. 檢查參數是否足夠
         if (args.Length < 2)
         {
-            player.PrintToChat($" {Prefix} 使 用 方 法: .rtv <地 圖 名 稱> 例 如： {ChatColors.Yellow}.rtv de_mirage{ChatColors.White}");
+            player.PrintToChat($" {Prefix} 使 用 方 法： .rtv  <地 圖 名 稱>  例 如： {ChatColors.Yellow}.RTV de_mirage{ChatColors.White}");
             return;
         }
 
@@ -166,7 +166,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         );
 
         _lastVoteTime = Server.CurrentTime;
-        Server.PrintToChatAll($" {Prefix} 玩家 {ChatColors.Lime}{player.PlayerName}{ChatColors.White} 發 起 了 投 票 換 圖 至 {ChatColors.Green}{_targetMap}{ChatColors.White}");
+        Server.PrintToChatAll($" {Prefix} 玩家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 投 票 換 圖 至 {ChatColors.Green}{_targetMap}{ChatColors.White}");
     }
 
     private bool VoteResultCallback(YesNoVoteInfo info)
@@ -178,7 +178,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
 
         if(info.yes_votes > info.no_votes) 
         {
-            Server.PrintToChatAll($" {Prefix} {ChatColors.Green}投 票 通 過 {ChatColors.Yellow}3 秒 {ChatColors.White}後 更 換 地 圖 至 {ChatColors.Gold}{_targetMap}");
+            Server.PrintToChatAll($" {Prefix} 投 票 通 過 {ChatColors.Green}3 秒 {ChatColors.White}後 更 換 地 圖 至 {ChatColors.Green}{_targetMap}");
             string mapCmd = _targetMap;
             
             AddTimer(3.0f, () =>
