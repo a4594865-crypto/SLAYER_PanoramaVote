@@ -13,13 +13,18 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '10.0.x'
-        cache: true
-        # 🎯 解決找不到 packages.lock.json 的關鍵：指定比對專案檔
+        cache: true             
         cache-dependency-path: '**/SLAYER_PanoramaVote.csproj'
 
     - name: Restore dependencies
       run: dotnet restore
 
     - name: Build Project
-      # 🚀 防死鎖參數：停用背景並行編譯，防止虛擬機記憶體死鎖轉圈圈
       run: dotnet build --no-restore --configuration Release /p:UseSharedCompilation=false /p:BuildInParallel=false
+
+    # 🎯 【新增步驟】將編譯好的 .dll 檔案上傳，生成版本供人下載
+    - name: Upload Plugin Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: SLAYER_PanoramaVote-Net10  # 這是你下載時看到的壓縮包名稱
+        path: '**/bin/Release/net10.0/SLAYER_PanoramaVote.dll' # 這裡會抓取編譯出的插件本體
