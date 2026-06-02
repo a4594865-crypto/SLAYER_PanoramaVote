@@ -11,15 +11,15 @@ namespace SLAYER_PanoramaVote;
 public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_VotesConfig>
 {
     public override string ModuleName => "SLAYER_PanoramaVote";
-    public override string ModuleVersion => "1.10"; // 升級版本號
+    public override string ModuleVersion => "1.11"; // 升級版本號
     public override string ModuleAuthor => "SLAYER";
-    public override string ModuleDescription => "Panorama Votes - Warmup Only & 4+ Players & 90s Cooldown (.NET 10)";
+    public override string ModuleDescription => "Panorama Votes - Net10 Fixed Edition";
     public CPanoramaVote voteHandler; // Global variable to hold the vote handler
     string Prefix = $" {ChatColors.Gold}[{ChatColors.DarkRed}★ {ChatColors.Green}SLAYER_PanoramaVote {ChatColors.DarkRed}★{ChatColors.Gold}]";
     
     private string _targetMap = string.Empty;
 
-    // 🎯 投票冷卻時間 90 秒
+    // 投票冷卻時間 90 秒
     private readonly double _cooldownDuration = 90.0;
     // 用來記錄上一次投票結束的時間點
     private DateTime _lastVoteEndTime = DateTime.MinValue;
@@ -52,15 +52,15 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
         if (player == null || !player.IsValid)
             return;
 
-        // 🎯 1. 限暖場時間判定：透過精準尋找 ccs_game_rules 實體獲取，完美支援 .NET 10
-        var gameRules = Utilities.FindAllEntitiesByDesignerName<CCSGameRules>("ccs_game_rules").FirstOrDefault();
+        // 🎯 1. 限制暖場檢查：改用 .NET 10 最新標準 GameRulesFilter.GameRules 讀取
+        var gameRules = GameRulesFilter.GameRules;
         if (gameRules == null || gameRules.WarmupPeriod == false)
         {
             player.PrintToChat($" {Prefix} {ChatColors.Red}錯誤: 目前不是暖場時間，無法發起換圖投票！");
             return;
         }
 
-        // 🎯 2. 人數限制檢查：如果伺服器人數低於 4 人，直接攔截不給投票
+        // 2. 人數限制檢查：如果伺服器人數低於 4 人，直接攔截
         int currentPlayerCount = Utilities.GetPlayers().Count;
         if (currentPlayerCount < 4)
         {
@@ -68,7 +68,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
             return;
         }
 
-        // 🎯 3. 檢查參數是否足夠（錯誤提示同步修改引導玩家輸入 .vote）
+        // 3. 檢查參數是否足夠
         if (info.ArgCount < 2)
         {
             player.PrintToChat($" {Prefix} {ChatColors.Red}使用方法: .vote <地圖名稱> (例如: .vote de_mirage)");
@@ -82,13 +82,13 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
             return;
         }
 
-        // 🎯 5. 檢查投票冷卻時間（90秒限制）
+        // 5. 檢查投票冷卻時間（90秒限制）
         TimeSpan timeSinceLastVote = DateTime.Now - _lastVoteEndTime;
         if (timeSinceLastVote.TotalSeconds < _cooldownDuration)
         {
             int remainingSeconds = (int)(_cooldownDuration - timeSinceLastVote.TotalSeconds);
             player.PrintToChat($" {Prefix} {ChatColors.Red}投票冷卻中！請等待 {ChatColors.Yellow}{remainingSeconds}{ChatColors.Red} 秒後再發起投票。");
-            return; // 攔截
+            return;
         }
 
         // 6. 取得玩家輸入的地圖，並強制轉小寫辨認
@@ -151,8 +151,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
             }
             case YesNoVoteAction.VoteAction_End: 
             {
-                // 🎯 只要投票因任何原因結束（包含人數滿提前結束、時間到失敗、或單人狀況下結束）
-                // 都在這裡百分之百精準重置 90 秒冷卻時間計時器！
                 _lastVoteEndTime = DateTime.Now;
                 break;
             }
