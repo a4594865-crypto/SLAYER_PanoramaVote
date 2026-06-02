@@ -15,15 +15,15 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
     public override string ModuleAuthor => "SLAYER";
     public override string ModuleDescription => "Panorama RTV with Player Count, Warmup, Cooldown and Dot-command support";
     public CPanoramaVote voteHandler; // Global variable to hold the vote handler
-    string Prefix = $" {ChatColors.Gold}[{ChatColors.DarkRed}★ {ChatColors.Green}SLAYER_RTV {ChatColors.DarkRed}★{ChatColors.Gold}]";
+    string Prefix = $" {ChatColors.Green}[系統訊息]{ChatColors.White}";
     
     private string _targetMap = string.Empty;
     
     private double _lastVoteTime = 0.0; 
     private const double CooldownTime = 90.0; // 冷卻時間 90 秒
-    private const int MinPlayersRequired = 4; // 最低人數限制為 4 人
+    private const int MinPlayersRequired = 2; // 最低人數限制為 2 人
 
-    //建立允許的地圖清單
+    // 建立允許的地圖清單
     private readonly string[] _allowedMaps = { 
         "de_mirage", 
         "de_inferno", 
@@ -45,7 +45,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
 		});
     }
 
-    // 【修改】同時綁定 css_rtv (!rtv) 與 .rtv 兩個指令入口
+    // 同时绑定 css_rtv (!rtv) 与 .rtv 两个指令入口
     [ConsoleCommand("css_rtv", "發起 RTV 投票更換地圖")]
     [ConsoleCommand(".rtv", "發起 RTV 投票更換地圖")]
     public void OnCommandVote(CCSPlayerController? player, CommandInfo info) 
@@ -57,7 +57,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
         var gameRules = Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules").FirstOrDefault();
         if (gameRules == null || gameRules.GameRules == null || !gameRules.GameRules.WarmupPeriod)
         {
-            player.PrintToChat($" {Prefix} {ChatColors.Red}錯誤: RTV 換圖投票只能在【暖場時間】內使用！");
+            player.PrintToChat($" {Prefix} 換 圖 投 票 只 能 在【暖 場 時 間】內 使 用");
             return;
         }
 
@@ -72,7 +72,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
 
         if (activePlayerCount < MinPlayersRequired)
         {
-            player.PrintToChat($" {Prefix} {ChatColors.Red}錯誤: 現場遊玩人數不足！需要 {ChatColors.Yellow}{MinPlayersRequired}{ChatColors.Red} 人以上才能發起 RTV (目前: {ChatColors.Yellow}{activePlayerCount}{ChatColors.Red} 人，不含觀察者)。");
+            player.PrintToChat($" {Prefix} 人 數 不 足！需 要 {ChatColors.Yellow}6{ChatColors.Red} 人 以 上 才 能 發 起 投 票");
             return;
         }
 
@@ -81,7 +81,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
         if (currentTime - _lastVoteTime < CooldownTime)
         {
             int timeLeft = (int)Math.Ceiling(CooldownTime - (currentTime - _lastVoteTime));
-            player.PrintToChat($" {Prefix} {ChatColors.Red}錯誤: RTV 冷卻中！請等待 {ChatColors.Yellow}{timeLeft}{ChatColors.Red} 秒後再試。");
+            player.PrintToChat($" {Prefix} 投 票 冷 輕 中！請 等 待 {ChatColors.Yellow}{timeLeft}{ChatColors.Red} 秒 後 再 試。");
             return;
         }
 
@@ -90,30 +90,32 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
         {
             // 根據玩家輸入的指令前綴，智慧顯示提示（如果是點號開頭就顯示 .rtv）
             string usedCmd = info.GetArg(0).StartsWith(".") ? ".rtv" : "!rtv";
-            player.PrintToChat($" {Prefix} {ChatColors.Red}使用方法: {usedCmd} <地圖名稱> (例如: {usedCmd} de_mirage)");
+            player.PrintToChat($" {Prefix} 使 用 方 法: {usedCmd} <地 圖 名 稱> 例 如: {usedCmd} de_mirage");
             return;
         }
 
         // 2. 檢查當前是否已經有投票在進行
         if (voteHandler.IsVoteInProgress())
         {
-            player.PrintToChat($" {Prefix} {ChatColors.Red}當前已有投票正在進行中，請稍後再試。");
+            player.PrintToChat($" {Prefix} {ChatColors.Red}當 前 已 有 投 票 正 在 進 行 中，請 稍 後 再 試");
             return;
         }
 
-        // 3. 取得玩家輸入的地圖，並強制轉小寫辨認
+        // 3. 取得玩家輸入的地圖，並強制轉小寫
         string inputMap = info.GetArg(1).Trim().ToLower();
 
-        // 檢查輸入的地圖有沒有在允許名單內
-        if (!_allowedMaps.Contains(inputMap))
+        // 【修改】不論地圖清單是大寫還是小寫，統一轉換為小寫進行比對 (大小寫通吃)
+        string? matchedMap = _allowedMaps.FirstOrDefault(m => m.ToLower() == inputMap);
+
+        if (matchedMap == null)
         {
-            player.PrintToChat($" {Prefix} {ChatColors.Red}錯誤: 伺服器不支援地圖 [{inputMap}] ！");
+            player.PrintToChat($" {Prefix} 伺 服 器 不 支 援 地 圖 [{info.GetArg(1)}] ！");
             player.PrintToChat($" {Prefix} {ChatColors.Yellow}可用地圖: {string.Join(", ", _allowedMaps)}");
-            return; // 辨認失敗，直接中斷，不發起投票
+            return; // 辨認失敗，直接中斷
         }
 
-        // 5. 驗證通過，儲存地圖名稱
-        _targetMap = inputMap;
+        // 5. 驗證通過，儲存正確的地圖名稱（維持原本清單上的寫法）
+        _targetMap = matchedMap;
 
         voteHandler.Init(); // Initialize the vote handler
 
@@ -130,24 +132,25 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
         // 成功發起投票，刷新最後投票時間
         _lastVoteTime = Server.CurrentTime;
 
-        Server.PrintToChatAll($" {Prefix} 玩家 {ChatColors.Lime}{player.PlayerName}{ChatColors.White} 發起了 RTV 換圖至 {ChatColors.Green}{_targetMap}{ChatColors.White} 的投票！");
+        Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Lime}{player.PlayerName}{ChatColors.White} 發 起 了 投 票 換 圖 至 {ChatColors.Green}{_targetMap}{ChatColors.White} 投 票");
     }
 
     private bool VoteResultCallback(YesNoVoteInfo info)
     {
-        Server.PrintToChatAll($" {Prefix} {ChatColors.Green}投票結果: {ChatColors.Red}反對 = {ChatColors.Green}{info.no_votes} {ChatColors.White}| {ChatColors.Red}贊成 = {ChatColors.Green}{info.yes_votes} {ChatColors.White}| {ChatColors.Red}總投票數 = {ChatColors.Green}{info.num_votes} {ChatColors.White}| {ChatColors.Red}可投票人數 = {ChatColors.Green}{info.num_clients}");
-
-        foreach (var kvp in info.clientInfo) // Print the vote info for each player
+        foreach (var kvp in info.clientInfo) 
         {
             Console.WriteLine($"Player in Key: {kvp.Key}: Player Slot = {kvp.Value.Item1}, Player Vote = {(kvp.Value.Item2 == (int)CastVote.VOTE_OPTION1 ? "Yes" : "No")}");
         }
 
         if(info.yes_votes > info.no_votes) // Check if the vote passed
         {
-            Server.PrintToChatAll($" {Prefix} {ChatColors.Green}投票通過！即將更換地圖至 {ChatColors.Gold}{_targetMap}");
+            // 提示改為「3 秒後」
+            Server.PrintToChatAll($" {Prefix} {ChatColors.Green}投 票 通 過 {ChatColors.Yellow}3 秒 後{ChatColors.Green}更 換 地 圖 至 {ChatColors.Gold}{_targetMap}");
             
             string mapCmd = _targetMap;
-            Server.NextFrame(() =>
+            
+            // 延遲 3.0 秒後才執行換圖指令
+            AddTimer(3.0f, () =>
             {
                 Server.ExecuteCommand($"changelevel {mapCmd}");
             });
@@ -156,7 +159,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
         }
         else
         {
-            Server.PrintToChatAll($" {Prefix} {ChatColors.Red}投票失敗，維持當前地圖。");
+            Server.PrintToChatAll($" {Prefix} 投 票 失 敗，維 持 當 前 地 圖");
             return false;
         }
     }
@@ -167,22 +170,19 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
         {
             case YesNoVoteAction.VoteAction_Start: // On Vote Start
             {
-                Server.PrintToChatAll($" {Prefix} {ChatColors.Green}投票開始！請在左上角選擇 [F1 是] 或 [F2 否]");
+                Server.PrintToChatAll($" {Prefix} {ChatColors.Green}投 票 開 始！請 在 左 上 角 選 擇 [F1 是] 或 [F2 否]");
                 break;
             }
-            case YesNoVoteAction.VoteAction_Vote: // On Player Vote: param1 = client slot, param2 = choice (VOTE_OPTION1=yes, VOTE_OPTION2=no)
+            case YesNoVoteAction.VoteAction_Vote: // On Player Vote
             {
-                CCSPlayerController player = Utilities.GetPlayerFromSlot(param1)!;
-                if (player == null || !player.IsValid || player.Connected != PlayerConnectedState.PlayerConnected)
-                    break;
-                player.PrintToChat($" {Prefix} {ChatColors.White}感謝您的投票！您投了：{(param2 == (int)CastVote.VOTE_OPTION1 ? $"{ChatColors.Green}是 (Yes)" : $"{ChatColors.Red}否 (No)")}");
+                // 【已刪除】不發送個人投票感謝訊息
                 break;
             }
             case YesNoVoteAction.VoteAction_End:
             {
                 if ((YesNoVoteEndReason)param1 == YesNoVoteEndReason.VoteEnd_Cancelled) // Vote Cancelled
                 {
-                    Server.PrintToChatAll($" {Prefix} {ChatColors.Red}投票已被系統或管理員取消。");
+                    Server.PrintToChatAll($" {Prefix} {ChatColors.Red}投 票 已 被 系 統 或 管 理 員 取 消");
                 }
                 else if ((YesNoVoteEndReason)param1 == YesNoVoteEndReason.VoteEnd_AllVotes) // Everyone Voted
                 {
