@@ -102,11 +102,10 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             return;
         }
 
-        // 判斷輸入指令的人是不是在 CT 還是在 T (TS)
-        // 如果發起人的隊伍既不是 T (2) 也不是 CT (3)，就直接攔截並提示
+        // 精確判斷輸入指令的人是不是在 CT 還是在 T (TS)
         if (player.TeamNum != (byte)CsTeam.Terrorist && player.TeamNum != (byte)CsTeam.CounterTerrorist)
         {
-            player.PrintToChat($" {Prefix} 觀 查 者 玩 家 無 法 發 起 投 票");
+            player.PrintToChat($" {Prefix} 觀 察 者 玩 家 無 法 發 起 投 票");
             return;
         }
 
@@ -174,4 +173,57 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         );
 
         _lastVoteTime = Server.CurrentTime;
-        Server.PrintToChatAll($" {Prefix} 玩家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 投 票 換 圖 至 {ChatColors
+        Server.PrintToChatAll($" {Prefix} 玩家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 投 票 換 圖 至 {ChatColors.Green}{_targetMap}{ChatColors.White}");
+    }
+
+    private bool VoteResultCallback(YesNoVoteInfo info)
+    {
+        // 將日誌邏輯簡化，避免插值表達式衝突
+        foreach (var kvp in info.clientInfo) 
+        {
+            int slot = kvp.Value.Item1;
+            string isYes = (kvp.Value.Item2 == (int)CastVote.VOTE_OPTION1) ? "Yes" : "No";
+            Console.WriteLine($"[RTV Log] Player Key: {kvp.Key} | Slot: {slot} | Vote: {isYes}");
+        }
+
+        if(info.yes_votes > info.no_votes) 
+        {
+            Server.PrintToChatAll($" {Prefix} 投 票 通 過 {ChatColors.Green}3 秒 {ChatColors.White}後 更 換 地 圖 至 {ChatColors.Green}{_targetMap}");
+            string mapCmd = _targetMap;
+            
+            AddTimer(3.0f, () =>
+            {
+                Server.ExecuteCommand($"changelevel {mapCmd}");
+            });
+
+            return true;
+        }
+        else
+        {
+            Server.PrintToChatAll($" {Prefix} 投 票 失 敗，維 持 當 前 地 圖");
+            return false;
+        }
+    }
+
+    private void VoteHandlerCallback(YesNoVoteAction action, int param1, int param2)
+    {
+        switch (action)
+        {
+            case YesNoVoteAction.VoteAction_Start:
+            {
+                Server.PrintToChatAll($" {Prefix} 投 票 開 始！請 在 左 上角 選 擇{ChatColors.Green} [ F 1 是 ]{ChatColors.White} 或 {ChatColors.DarkRed}[ F 2 否 ]");
+                break;
+            }
+            case YesNoVoteAction.VoteAction_Vote:
+                break;
+            case YesNoVoteAction.VoteAction_End:
+            {
+                if ((YesNoVoteEndReason)param1 == YesNoVoteEndReason.VoteEnd_Cancelled)
+                {
+                    Server.PrintToChatAll($" {Prefix} {ChatColors.Red}投 票 已 被 系 統 或 管 理 員 取 消");
+                }
+                break;
+            }
+        }
+    }
+}
