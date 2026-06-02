@@ -111,7 +111,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
             case YesNoVoteAction.VoteAction_Vote: // On Player Vote: param1 = client slot, param2 = choice (VOTE_OPTION1=yes, VOTE_OPTION2=no)
             {
                 CCSPlayerController player = Utilities.GetPlayerFromSlot(param1)!;
-                if (player == null || !player.IsValid || player.Connected != PlayerConnectedState.PlayerConnected)
+                if (player == null || !player.IsValid || player.Connected != PlayerConnectedState.Connected)
                     break;
                 player.PrintToChat($" {Prefix} {ChatColors.White}感謝您的投票！您投了：{(param2 == (int)CastVote.VOTE_OPTION1 ? $"{ChatColors.Green}是 (Yes)" : $"{ChatColors.Red}否 (No)")}");
                 break;
