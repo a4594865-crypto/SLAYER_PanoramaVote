@@ -298,7 +298,7 @@ public class CPanoramaVote
     public bool SendYesNoVoteToAll(float flDuration, int iCaller, string sVoteTitle, string sDetailStr, YesNoVoteResult resultCallback, YesNoVoteHandler? handler = null)
     {
         CurrentVotefilter.Clear();
-        foreach(var player in Utilities.GetPlayers().Where(p => p != null && p.IsValid && !p.IsBot && !p.IsHLTV && p.Connected == PlayerConnectedState.Connected))
+        foreach(var player in Utilities.GetPlayers().Where(p => p != null && p.IsValid && !p.IsBot && !p.IsHLTV && p.Connected == PlayerConnectedState.PlayerConnected))
         {
             CurrentVotefilter.Add(player);
         }
