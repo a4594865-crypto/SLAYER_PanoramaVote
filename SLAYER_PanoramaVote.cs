@@ -15,12 +15,12 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
     public override string ModuleAuthor => "SLAYER";
     public override string ModuleDescription => "Panorama RTV with Player Count, Warmup, Cooldown and Dot-command support";
     public CPanoramaVote voteHandler; // Global variable to hold the vote handler
-    string Prefix = $" {ChatColors.Green}[系統訊息]{ChatColors.White}";
+    string Prefix = $" [{ChatColors.Green}系統訊息{ChatColors.White}]";
     
     private string _targetMap = string.Empty;
     
     private double _lastVoteTime = 0.0; 
-    private const double CooldownTime = 90.0; // 冷卻時間 90 秒
+    private const double CooldownTime = 120.0; // 冷卻時間 90 秒
     private const int MinPlayersRequired = 2; // 最低人數限制為 2 人
 
     // 建立允許的地圖清單
@@ -57,7 +57,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
         var gameRules = Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules").FirstOrDefault();
         if (gameRules == null || gameRules.GameRules == null || !gameRules.GameRules.WarmupPeriod)
         {
-            player.PrintToChat($" {Prefix} 換 圖 投 票 只 能 在【暖 場 時 間】內 使 用");
+            player.PrintToChat($" {Prefix} 換 圖 投 票 只 能 在{ChatColors.Yellow} 暖 場 時 間 {ChatColors.White}內 使 用");
             return;
         }
 
@@ -72,7 +72,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
 
         if (activePlayerCount < MinPlayersRequired)
         {
-            player.PrintToChat($" {Prefix} 人 數 不 足！需 要 {ChatColors.Yellow}6{ChatColors.Red} 人 以 上 才 能 發 起 投 票");
+            player.PrintToChat($" {Prefix} 人 數 不 足！需 要 {ChatColors.Yellow}6 人 {ChatColors.White}以 上 才 能 發 起 投 票");
             return;
         }
 
@@ -81,7 +81,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
         if (currentTime - _lastVoteTime < CooldownTime)
         {
             int timeLeft = (int)Math.Ceiling(CooldownTime - (currentTime - _lastVoteTime));
-            player.PrintToChat($" {Prefix} 投 票 冷 輕 中！請 等 待 {ChatColors.Yellow}{timeLeft}{ChatColors.Red} 秒 後 再 試。");
+            player.PrintToChat($" {Prefix} 投 票 冷 卻 中 請 等 待 {ChatColors.Yellow}{timeLeft} {ChatColors.White}秒 後 再 試。");
             return;
         }
 
@@ -121,7 +121,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
 
         // 6. 發起全服投票
         voteHandler.SendYesNoVoteToAll(
-            30.0f, 
+            20.0f, 
             player.Slot, 
             "#SFUI_vote_changelevel", // 官方內建的「更換地圖」本地化標題
             _targetMap, 
@@ -145,7 +145,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
         if(info.yes_votes > info.no_votes) // Check if the vote passed
         {
             // 提示改為「3 秒後」
-            Server.PrintToChatAll($" {Prefix} {ChatColors.Green}投 票 通 過 {ChatColors.Yellow}3 秒 後{ChatColors.Green}更 換 地 圖 至 {ChatColors.Gold}{_targetMap}");
+            Server.PrintToChatAll($" {Prefix} {ChatColors.Green}投 票 通 過 {ChatColors.Yellow}3 秒 {ChatColors.White}後更 換 地 圖 至 {ChatColors.Gold}{_targetMap}");
             
             string mapCmd = _targetMap;
             
@@ -170,7 +170,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
         {
             case YesNoVoteAction.VoteAction_Start: // On Vote Start
             {
-                Server.PrintToChatAll($" {Prefix} {ChatColors.Green}投 票 開 始！請 在 左 上 角 選 擇 [F1 是] 或 [F2 否]");
+                Server.PrintToChatAll($" {Prefix} 投 票 開 始！請 在 左 上 角 選 擇{ChatColors.Green} [ F 1 是 ]{ChatColors.White} 或 {ChatColors.DarkRed}[ F 2 否 ]");
                 break;
             }
             case YesNoVoteAction.VoteAction_Vote: // On Player Vote
@@ -186,11 +186,11 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
                 }
                 else if ((YesNoVoteEndReason)param1 == YesNoVoteEndReason.VoteEnd_AllVotes) // Everyone Voted
                 {
-                    Server.PrintToChatAll($" {Prefix} {ChatColors.Green}所有人皆已投票完畢，正在結算...");
+                    Server.PrintToChatAll($" {Prefix} {ChatColors.Green}所 有 人 皆 已 投 票 完 畢，正 在 結 算...");
                 }
                 else if ((YesNoVoteEndReason)param1 == YesNoVoteEndReason.VoteEnd_TimeUp) // Time is up
                 {
-                    Server.PrintToChatAll($" {Prefix} {ChatColors.Red}投票時間結束，正在結算...");
+                    Server.PrintToChatAll($" {Prefix} {ChatColors.Red}投 票 時 間 結 束，正 在 結 算...");
                 }
 
                 break;
