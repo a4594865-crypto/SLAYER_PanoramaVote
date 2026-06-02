@@ -11,17 +11,17 @@ namespace SLAYER_PanoramaVote;
 public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_VotesConfig>
 {
     public override string ModuleName => "SLAYER_PanoramaVote";
-    public override string ModuleVersion => "1.3"; // 升級版本號
+    public override string ModuleVersion => "1.4"; // 升級版本號
     public override string ModuleAuthor => "SLAYER";
-    public override string ModuleDescription => "Panorama Votes with Warmup Limitation and 90s Cooldown";
+    public override string ModuleDescription => "Panorama Votes with Player Count, Warmup and Cooldown";
     public CPanoramaVote voteHandler; // Global variable to hold the vote handler
     string Prefix = $" {ChatColors.Gold}[{ChatColors.DarkRed}★ {ChatColors.Green}SLAYER_PanoramaVote {ChatColors.DarkRed}★{ChatColors.Gold}]";
     
     private string _targetMap = string.Empty;
     
-    // 【新增修改】記錄上一次發起投票的伺服器時間 (單位：秒)
     private double _lastVoteTime = 0.0; 
-    private const double CooldownTime = 90.0; // 冷卻時間設定為 90 秒
+    private const double CooldownTime = 90.0; // 冷卻時間 90 秒
+    private const int MinPlayersRequired = 4; // 【新增修改】最低人數限制為 4 人
 
     //建立允許的地圖清單
     private readonly string[] _allowedMaps = { 
@@ -59,7 +59,22 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
             return;
         }
 
-        // 【新增修改】 0.5. 檢查冷卻時間是否已到
+        // 【新增修改】 0.3. 檢查現場人數是否足夠 (不含觀察者、不含 BOT)
+        int activePlayerCount = Utilities.GetPlayers().Count(p => 
+            p != null && 
+            p.IsValid && 
+            !p.IsBot && 
+            p.Connected == PlayerConnectedState.PlayerConnected && 
+            (p.TeamNum == (byte)CsTeam.Terrorist || p.TeamNum == (byte)CsTeam.CounterTerrorist)
+        );
+
+        if (activePlayerCount < MinPlayersRequired)
+        {
+            player.PrintToChat($" {Prefix} {ChatColors.Red}錯誤: 現場遊玩人數不足！需要 {ChatColors.Yellow}{MinPlayersRequired}{ChatColors.Red} 人以上才能發起投票 (目前: {ChatColors.Yellow}{activePlayerCount}{ChatColors.Red} 人，不含觀察者)。");
+            return;
+        }
+
+        // 0.5. 檢查冷卻時間是否已到
         double currentTime = Server.CurrentTime;
         if (currentTime - _lastVoteTime < CooldownTime)
         {
@@ -108,7 +123,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
             VoteHandlerCallback
         );
 
-        // 【新增修改】成功發起投票，刷新最後投票時間
+        // 成功發起投票，刷新最後投票時間
         _lastVoteTime = Server.CurrentTime;
 
         Server.PrintToChatAll($" {Prefix} 玩家 {ChatColors.Lime}{player.PlayerName}{ChatColors.White} 發起了換圖至 {ChatColors.Green}{_targetMap}{ChatColors.White} 的投票！");
