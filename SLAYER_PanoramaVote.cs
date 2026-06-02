@@ -3,18 +3,19 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Utils;
 using CounterStrikeSharp.API.Modules.Commands;
-using PanoramaVote; // Add the PanoramaVote namespace
+using CounterStrikeSharp.API.Modules.Admin; // 🎯 確保引入管理員模組
+using PanoramaVote; 
 
 namespace SLAYER_PanoramaVote;
 
 #pragma warning disable CS8618
-public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_VotesConfig>
+public partial class SLAYER_PanoramaVote : BasePlugin 
 {
     public override string ModuleName => "SLAYER_PanoramaVote";
-    public override string ModuleVersion => "1.12"; // 升級版本號
+    public override string ModuleVersion => "1.13"; // 升級版本號
     public override string ModuleAuthor => "SLAYER";
-    public override string ModuleDescription => "Panorama Votes - Net10 Proxy Fixed Edition";
-    public CPanoramaVote voteHandler; // Global variable to hold the vote handler
+    public override string ModuleDescription => "Panorama Votes - Perms Fixed Edition";
+    public CPanoramaVote voteHandler; 
     string Prefix = $" {ChatColors.Gold}[{ChatColors.DarkRed}★ {ChatColors.Green}SLAYER_PanoramaVote {ChatColors.DarkRed}★{ChatColors.Gold}]";
     
     private string _targetMap = string.Empty;
@@ -37,24 +38,25 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
 
     public override void Load(bool hotReload)
     {
-        voteHandler = new CPanoramaVote(this); // Initialize the vote handler
+        voteHandler = new CPanoramaVote(this); 
         RegisterEventHandler<EventVoteCast>((@event, info) =>
 		{
-            voteHandler.VoteCast(@event); // Call the vote cast function that vote has been casted by player
-
+            voteHandler.VoteCast(@event); 
 			return HookResult.Continue;
 		});
     }
 
+    // 🎯 關鍵修正：明確宣告此指令「不需要任何特殊權限」，任何一般玩家（All）都可以自由使用！
     [ConsoleCommand("css_vote", "發起投票更換地圖")]
+    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnCommandVote(CCSPlayerController? player, CommandInfo info) 
     {
         if (player == null || !player.IsValid)
             return;
 
-        // 🎯 1. 限制暖場檢查：透過 CCSGameRulesProxy 撈取實體，完美解決 .NET 10 的型別限制與找不到 GameRulesFilter 的問題
-        var gameRulesProxy = Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("ccs_game_rules").FirstOrDefault();
-        if (gameRulesProxy == null || gameRulesProxy.GameRules == null || gameRulesProxy.GameRules.WarmupPeriod == false)
+        // 1. 限暖場時間判定：對齊 1v1 插件的完美 .NET 10 標準
+        var gameRulesProxy = Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules").FirstOrDefault();
+        if (gameRulesProxy?.GameRules?.WarmupPeriod ?? true == false)
         {
             player.PrintToChat($" {Prefix} {ChatColors.Red}錯誤: 目前不是暖場時間，無法發起換圖投票！");
             return;
@@ -105,7 +107,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
         // 8. 驗證通過，儲存地圖名稱
         _targetMap = inputMap;
 
-        voteHandler.Init(); // Initialize the vote handler
+        voteHandler.Init(); 
 
         // 9. 發起全服投票
         voteHandler.SendYesNoVoteToAll(
@@ -120,14 +122,13 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
 
     private bool VoteResultCallback(YesNoVoteInfo info)
     {
-        if(info.yes_votes > info.no_votes) // Check if the vote passed
+        if(info.yes_votes > info.no_votes) 
         {
             string mapCmd = _targetMap;
             Server.NextFrame(() =>
             {
                 Server.ExecuteCommand($"changelevel {mapCmd}");
             });
-
             return true;
         }
         else
@@ -140,7 +141,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
     {
         switch (action)
         {
-            case YesNoVoteAction.VoteAction_Start: // On Vote Start
+            case YesNoVoteAction.VoteAction_Start: 
             {
                 Server.PrintToChatAll($" {Prefix} {ChatColors.Green}投票開始！請在左上角選擇 [F1 是] 或 [F2 否]");
                 break;
