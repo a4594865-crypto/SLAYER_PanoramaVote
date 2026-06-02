@@ -66,7 +66,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
             p != null && 
             p.IsValid && 
             !p.IsBot && 
-            p.Connected == PlayerConnectedState.PlayerConnected && 
+            p.Connected == PlayerConnectedState.Connected && 
             (p.TeamNum == (byte)CsTeam.Terrorist || p.TeamNum == (byte)CsTeam.CounterTerrorist)
         );
 
