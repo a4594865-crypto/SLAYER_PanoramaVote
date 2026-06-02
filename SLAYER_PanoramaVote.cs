@@ -11,15 +11,19 @@ namespace SLAYER_PanoramaVote;
 public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_VotesConfig>
 {
     public override string ModuleName => "SLAYER_PanoramaVote";
-    public override string ModuleVersion => "1.1"; // 升級版本號
+    public override string ModuleVersion => "1.3"; // 升級版本號
     public override string ModuleAuthor => "SLAYER";
-    public override string ModuleDescription => "Panorama Votes with Map List Validation";
+    public override string ModuleDescription => "Panorama Votes with Warmup Limitation and 90s Cooldown";
     public CPanoramaVote voteHandler; // Global variable to hold the vote handler
     string Prefix = $" {ChatColors.Gold}[{ChatColors.DarkRed}★ {ChatColors.Green}SLAYER_PanoramaVote {ChatColors.DarkRed}★{ChatColors.Gold}]";
     
     private string _targetMap = string.Empty;
+    
+    // 【新增修改】記錄上一次發起投票的伺服器時間 (單位：秒)
+    private double _lastVoteTime = 0.0; 
+    private const double CooldownTime = 90.0; // 冷卻時間設定為 90 秒
 
-    // 🎯 建立允許的地圖清單（你可以自由增減這裡的地圖名稱，記得都要維持小寫）
+    //建立允許的地圖清單
     private readonly string[] _allowedMaps = { 
         "de_mirage", 
         "de_inferno", 
@@ -47,6 +51,23 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
         if (player == null || !player.IsValid)
             return;
 
+        // 0. 檢查當前是否為暖場時間
+        var gameRules = Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules").FirstOrDefault();
+        if (gameRules == null || gameRules.GameRules == null || !gameRules.GameRules.WarmupPeriod)
+        {
+            player.PrintToChat($" {Prefix} {ChatColors.Red}錯誤: 換圖投票指令只能在【暖場時間】內使用！");
+            return;
+        }
+
+        // 【新增修改】 0.5. 檢查冷卻時間是否已到
+        double currentTime = Server.CurrentTime;
+        if (currentTime - _lastVoteTime < CooldownTime)
+        {
+            int timeLeft = (int)Math.Ceiling(CooldownTime - (currentTime - _lastVoteTime));
+            player.PrintToChat($" {Prefix} {ChatColors.Red}錯誤: 投票冷卻中！請等待 {ChatColors.Yellow}{timeLeft}{ChatColors.Red} 秒後再試。");
+            return;
+        }
+
         // 1. 檢查參數是否足夠
         if (info.ArgCount < 2)
         {
@@ -64,7 +85,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
         // 3. 取得玩家輸入的地圖，並強制轉小寫辨認
         string inputMap = info.GetArg(1).Trim().ToLower();
 
-        // 🎯 4. 地圖清單驗證：檢查輸入的地圖有沒有在允許名單內
+        // 檢查輸入的地圖有沒有在允許名單內
         if (!_allowedMaps.Contains(inputMap))
         {
             player.PrintToChat($" {Prefix} {ChatColors.Red}錯誤: 伺服器不支援地圖 [{inputMap}] ！");
@@ -86,6 +107,9 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
             VoteResultCallback, 
             VoteHandlerCallback
         );
+
+        // 【新增修改】成功發起投票，刷新最後投票時間
+        _lastVoteTime = Server.CurrentTime;
 
         Server.PrintToChatAll($" {Prefix} 玩家 {ChatColors.Lime}{player.PlayerName}{ChatColors.White} 發起了換圖至 {ChatColors.Green}{_targetMap}{ChatColors.White} 的投票！");
     }
