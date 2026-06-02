@@ -42,16 +42,13 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             voteHandler.VoteCast(@event); 
 			return HookResult.Continue;
 		});
-
-        // 🎯 完美修復：使用 AddCommandHook 攔截 say 和 say_team，全版本通用且不依賴特定 Event 類別
-        AddCommandHook("say", OnPlayerSay);
-        AddCommandHook("say_team", OnPlayerSay);
     }
 
-    // 🎯 聊天訊息攔截核心邏輯
-    private HookResult OnPlayerSay(CCSPlayerController? player, CommandInfo info)
+    // 🎯 最新版 v369 標準寫法：直接使用 ConsoleCommand 攔截全服聊天 say 指令
+    [ConsoleCommand("say", "攔截公頻聊天")]
+    public void OnPlayerSay(CCSPlayerController? player, CommandInfo info)
     {
-        if (player == null || !player.IsValid) return HookResult.Continue;
+        if (player == null || !player.IsValid) return;
 
         // 取得玩家輸入的完整對話字串 (去掉兩側引號與空格)
         string text = info.ArgString.Trim('"').Trim();
@@ -61,12 +58,22 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         {
             string[] parts = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             ExecuteRtvLogic(player, parts);
-            
-            // 🎯 選擇性：返回 Handled 可以讓 ".rtv" 這三個字不顯示在聊天框，畫面更乾淨
-            return HookResult.Continue; 
         }
+    }
 
-        return HookResult.Continue;
+    // 🎯 最新版 v369 標準寫法：直接使用 ConsoleCommand 攔截團隊聊天 say_team 指令
+    [ConsoleCommand("say_team", "攔截團隊聊天")]
+    public void OnPlayerSayTeam(CCSPlayerController? player, CommandInfo info)
+    {
+        if (player == null || !player.IsValid) return;
+
+        string text = info.ArgString.Trim('"').Trim();
+
+        if (text.StartsWith(".rtv", StringComparison.OrdinalIgnoreCase))
+        {
+            string[] parts = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            ExecuteRtvLogic(player, parts);
+        }
     }
 
     // 保留後台指令入口以供前置支援
@@ -159,7 +166,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         );
 
         _lastVoteTime = Server.CurrentTime;
-        Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Lime}{player.PlayerName}{ChatColors.White} 發 起 了 投 票 換 圖 至 {ChatColors.Green}{_targetMap}{ChatColors.White}");
+        Server.PrintToChatAll($" {Prefix} 玩家 {ChatColors.Lime}{player.PlayerName}{ChatColors.White} 發 起 了 投 票 換 圖 至 {ChatColors.Green}{_targetMap}{ChatColors.White}");
     }
 
     private bool VoteResultCallback(YesNoVoteInfo info)
