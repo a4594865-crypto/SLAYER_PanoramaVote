@@ -11,11 +11,11 @@ namespace SLAYER_PanoramaVote;
 public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_VotesConfig>
 {
     public override string ModuleName => "SLAYER_PanoramaVote";
-    public override string ModuleVersion => "1.7"; // 升級版本號
+    public override string ModuleVersion => "1.8"; // 升級版本號
     public override string ModuleAuthor => "SLAYER";
-    public override string ModuleDescription => "Panorama Votes - Warmup Only Edition";
+    public override string ModuleDescription => "Panorama Votes - Warmup Only Edition (Fixed Compiler Error)";
     public CPanoramaVote voteHandler; // Global variable to hold the vote handler
-    string Prefix = $" {ChatColors.Gold}[{ChatColors.DarkRed}★ {ChatColors.Green}投票通知 {ChatColors.DarkRed}★{ChatColors.Gold}]";
+    string Prefix = $" {ChatColors.Gold}[{ChatColors.DarkRed}★ {ChatColors.Green}SLAYER_PanoramaVote {ChatColors.DarkRed}★{ChatColors.Gold}]";
     
     private string _targetMap = string.Empty;
 
@@ -32,7 +32,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
         "de_nuke", 
         "de_anubis", 
         "de_ancient", 
-        "de_overpass" 
+        "de_vertigo" 
     };
 
     public override void Load(bool hotReload)
@@ -52,32 +52,33 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
         if (player == null || !player.IsValid)
             return;
 
-        // 🎯 1. 限制暖場檢查：只有在暖場階段才能使用此指令
-        if (GameRules().WarmupPeriod == false)
+        // 🎯 1. 限制暖場檢查：修正為使用 Utilities.GetGameRules() 讀取
+        var gameRules = Utilities.GetGameRules();
+        if (gameRules == null || gameRules.WarmupPeriod == false)
         {
-            player.PrintToChat($" {Prefix} {ChatColors.Red}目 前 不 是 暖 場 時 間，無 法 發 起 換 圖 投 票");
+            player.PrintToChat($" {Prefix} {ChatColors.Red}錯誤: 目前不是暖場時間，無法發起換圖投票！");
             return;
         }
 
-        // 🎯 2. 人數限制檢查：如果伺服器人數低於 4 人，直接攔截
+        // 2. 人數限制檢查：如果伺服器人數低於 4 人，直接攔截
         int currentPlayerCount = Utilities.GetPlayers().Count;
         if (currentPlayerCount < 4)
         {
-            player.PrintToChat($" {Prefix} {ChatColors.Red}錯誤: 伺服器內人數不足");
+            player.PrintToChat($" {Prefix} {ChatColors.Red}錯誤: 伺服器內人數不足 {ChatColors.Yellow}4{ChatColors.Red} 人，無法發起換圖投票！(當前人數: {currentPlayerCount})");
             return;
         }
 
         // 3. 檢查參數是否足夠
         if (info.ArgCount < 2)
         {
-            player.PrintToChat($" {Prefix} {ChatColors.Red}使 用 方 法: .vote <地圖名稱> (例如: .vote de_mirage)");
+            player.PrintToChat($" {Prefix} {ChatColors.Red}使用方法: .vote <地圖名稱> (例如: .vote de_mirage)");
             return;
         }
 
         // 4. 檢查當前是否已經有投票在進行
         if (voteHandler.IsVoteInProgress())
         {
-            player.PrintToChat($" {Prefix} {ChatColors.Red}當 前 已 有 投 票 正 在 進 行 中，請 稍 後 再 試。");
+            player.PrintToChat($" {Prefix} {ChatColors.Red}當前已有投票正在進行中，請稍後再試。");
             return;
         }
 
@@ -86,7 +87,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
         if (timeSinceLastVote.TotalSeconds < _cooldownDuration)
         {
             int remainingSeconds = (int)(_cooldownDuration - timeSinceLastVote.TotalSeconds);
-            player.PrintToChat($" {Prefix} {ChatColors.Red}投 票 冷 卻 中 請 等 待 {ChatColors.Yellow}{remainingSeconds}{ChatColors.Red} 秒 後 發 起 投 票。");
+            player.PrintToChat($" {Prefix} {ChatColors.Red}投票冷卻中！請等待 {ChatColors.Yellow}{remainingSeconds}{ChatColors.Red} 秒後再發起投票。");
             return;
         }
 
@@ -96,8 +97,8 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
         // 7. 地圖清單驗證
         if (!_allowedMaps.Contains(inputMap))
         {
-            player.PrintToChat($" {Prefix} {ChatColors.Red}錯誤: 伺 服 器 不 支 援 地 圖 [{inputMap}] ");
-            player.PrintToChat($" {Prefix} {ChatColors.Yellow}可 用 地 圖: {string.Join(", ", _allowedMaps)}");
+            player.PrintToChat($" {Prefix} {ChatColors.Red}錯誤: 伺服器不支援地圖 [{inputMap}] ！");
+            player.PrintToChat($" {Prefix} {ChatColors.Yellow}可用地圖: {string.Join(", ", _allowedMaps)}");
             return;
         }
 
