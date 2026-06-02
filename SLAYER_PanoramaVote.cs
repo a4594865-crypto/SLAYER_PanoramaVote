@@ -21,7 +21,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
     
     private double _lastVoteTime = 0.0; 
     private const double CooldownTime = 120.0; // 冷卻時間 120 秒
-    private const int MinPlayersRequired = 6; // 最低人數限制為 2 人
+    private const int MinPlayersRequired = 6; // 最低人數限制為 6 人
 
     private readonly string[] _allowedMaps = { 
         "de_mirage", 
@@ -94,7 +94,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
     // 將所有換圖檢查與邏輯抽取出來，供共同調用
     private void ExecuteRtvLogic(CCSPlayerController player, string[] args)
     {
-        // 0. 檢查當前是否為暖場時間
+        // 檢查當前是否為暖場時間
         var gameRules = Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules").FirstOrDefault();
         if (gameRules == null || gameRules.GameRules == null || !gameRules.GameRules.WarmupPeriod)
         {
@@ -102,7 +102,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             return;
         }
 
-        // 0.3. 檢查現場人數是否足夠
+        // 檢查現場人數是否足夠
         int activePlayerCount = Utilities.GetPlayers().Count(p => 
             p != null && 
             p.IsValid && 
@@ -117,7 +117,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             return;
         }
 
-        // 0.5. 檢查冷卻時間是否已到
+        // 檢查冷卻時間是否已到
         double currentTime = Server.CurrentTime;
         if (currentTime - _lastVoteTime < CooldownTime)
         {
@@ -147,7 +147,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         if (matchedMap == null)
         {
             player.PrintToChat($" {Prefix} 伺 服 器 不 支 援 地 圖 [{args[1]}] ！");
-            player.PrintToChat($" {Prefix} {ChatColors.Yellow}可用地圖: {string.Join(", ", _allowedMaps)}");
+            player.PrintToChat($" {Prefix} 可用地圖： {ChatColors.Yellow}{string.Join(", ", _allowedMaps)}");
             return;
         }
 
