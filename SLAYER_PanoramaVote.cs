@@ -11,9 +11,9 @@ namespace SLAYER_PanoramaVote;
 public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_VotesConfig>
 {
     public override string ModuleName => "SLAYER_PanoramaVote";
-    public override string ModuleVersion => "1.11"; // 升級版本號
+    public override string ModuleVersion => "1.12"; // 升級版本號
     public override string ModuleAuthor => "SLAYER";
-    public override string ModuleDescription => "Panorama Votes - Net10 Fixed Edition";
+    public override string ModuleDescription => "Panorama Votes - Net10 Proxy Fixed Edition";
     public CPanoramaVote voteHandler; // Global variable to hold the vote handler
     string Prefix = $" {ChatColors.Gold}[{ChatColors.DarkRed}★ {ChatColors.Green}SLAYER_PanoramaVote {ChatColors.DarkRed}★{ChatColors.Gold}]";
     
@@ -52,9 +52,9 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
         if (player == null || !player.IsValid)
             return;
 
-        // 🎯 1. 限制暖場檢查：改用 .NET 10 最新標準 GameRulesFilter.GameRules 讀取
-        var gameRules = GameRulesFilter.GameRules;
-        if (gameRules == null || gameRules.WarmupPeriod == false)
+        // 🎯 1. 限制暖場檢查：透過 CCSGameRulesProxy 撈取實體，完美解決 .NET 10 的型別限制與找不到 GameRulesFilter 的問題
+        var gameRulesProxy = Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("ccs_game_rules").FirstOrDefault();
+        if (gameRulesProxy == null || gameRulesProxy.GameRules == null || gameRulesProxy.GameRules.WarmupPeriod == false)
         {
             player.PrintToChat($" {Prefix} {ChatColors.Red}錯誤: 目前不是暖場時間，無法發起換圖投票！");
             return;
