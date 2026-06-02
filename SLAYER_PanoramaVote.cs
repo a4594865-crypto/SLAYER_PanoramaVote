@@ -92,7 +92,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
     // 將所有換圖檢查與邏輯抽取出來，供共同調用
     private void ExecuteRtvLogic(CCSPlayerController player, string[] args)
     {
-        // 🎯 核心防線：管你是 CSTV、觀察者還是剛進服的 Bot，只要不是 CT 隊也不是 T 隊，就絕對無法發起投票！
+        //  Bot，只要不是 CT 隊也不是 T 隊，就絕對無法發起投票！
         if (player.TeamNum != (byte)CsTeam.Terrorist && player.TeamNum != (byte)CsTeam.CounterTerrorist)
         {
             player.PrintToChat($" {Prefix} {ChatColors.Red}只有在 CT 或 T 的玩家才能發起投票！");
