@@ -11,17 +11,17 @@ namespace SLAYER_PanoramaVote;
 public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_VotesConfig>
 {
     public override string ModuleName => "SLAYER_PanoramaVote";
-    public override string ModuleVersion => "1.4"; // 升級版本號
+    public override string ModuleVersion => "1.6"; // 升級版本號
     public override string ModuleAuthor => "SLAYER";
-    public override string ModuleDescription => "Panorama Votes with Player Count, Warmup and Cooldown";
+    public override string ModuleDescription => "Panorama RTV with Player Count, Warmup, Cooldown and Dot-command support";
     public CPanoramaVote voteHandler; // Global variable to hold the vote handler
-    string Prefix = $" {ChatColors.Gold}[{ChatColors.DarkRed}★ {ChatColors.Green}SLAYER_PanoramaVote {ChatColors.DarkRed}★{ChatColors.Gold}]";
+    string Prefix = $" {ChatColors.Gold}[{ChatColors.DarkRed}★ {ChatColors.Green}SLAYER_RTV {ChatColors.DarkRed}★{ChatColors.Gold}]";
     
     private string _targetMap = string.Empty;
     
     private double _lastVoteTime = 0.0; 
     private const double CooldownTime = 90.0; // 冷卻時間 90 秒
-    private const int MinPlayersRequired = 4; // 【新增修改】最低人數限制為 4 人
+    private const int MinPlayersRequired = 4; // 最低人數限制為 4 人
 
     //建立允許的地圖清單
     private readonly string[] _allowedMaps = { 
@@ -45,7 +45,9 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
 		});
     }
 
-    [ConsoleCommand("css_vote", "發起投票更換地圖")]
+    // 【修改】同時綁定 css_rtv (!rtv) 與 .rtv 兩個指令入口
+    [ConsoleCommand("css_rtv", "發起 RTV 投票更換地圖")]
+    [ConsoleCommand(".rtv", "發起 RTV 投票更換地圖")]
     public void OnCommandVote(CCSPlayerController? player, CommandInfo info) 
     {
         if (player == null || !player.IsValid)
@@ -55,11 +57,11 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
         var gameRules = Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules").FirstOrDefault();
         if (gameRules == null || gameRules.GameRules == null || !gameRules.GameRules.WarmupPeriod)
         {
-            player.PrintToChat($" {Prefix} {ChatColors.Red}錯誤: 換圖投票指令只能在【暖場時間】內使用！");
+            player.PrintToChat($" {Prefix} {ChatColors.Red}錯誤: RTV 換圖投票只能在【暖場時間】內使用！");
             return;
         }
 
-        // 【新增修改】 0.3. 檢查現場人數是否足夠 (不含觀察者、不含 BOT)
+        // 0.3. 檢查現場人數是否足夠 (不含觀察者、不含 BOT)
         int activePlayerCount = Utilities.GetPlayers().Count(p => 
             p != null && 
             p.IsValid && 
@@ -70,7 +72,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
 
         if (activePlayerCount < MinPlayersRequired)
         {
-            player.PrintToChat($" {Prefix} {ChatColors.Red}錯誤: 現場遊玩人數不足！需要 {ChatColors.Yellow}{MinPlayersRequired}{ChatColors.Red} 人以上才能發起投票 (目前: {ChatColors.Yellow}{activePlayerCount}{ChatColors.Red} 人，不含觀察者)。");
+            player.PrintToChat($" {Prefix} {ChatColors.Red}錯誤: 現場遊玩人數不足！需要 {ChatColors.Yellow}{MinPlayersRequired}{ChatColors.Red} 人以上才能發起 RTV (目前: {ChatColors.Yellow}{activePlayerCount}{ChatColors.Red} 人，不含觀察者)。");
             return;
         }
 
@@ -79,14 +81,16 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
         if (currentTime - _lastVoteTime < CooldownTime)
         {
             int timeLeft = (int)Math.Ceiling(CooldownTime - (currentTime - _lastVoteTime));
-            player.PrintToChat($" {Prefix} {ChatColors.Red}錯誤: 投票冷卻中！請等待 {ChatColors.Yellow}{timeLeft}{ChatColors.Red} 秒後再試。");
+            player.PrintToChat($" {Prefix} {ChatColors.Red}錯誤: RTV 冷卻中！請等待 {ChatColors.Yellow}{timeLeft}{ChatColors.Red} 秒後再試。");
             return;
         }
 
         // 1. 檢查參數是否足夠
         if (info.ArgCount < 2)
         {
-            player.PrintToChat($" {Prefix} {ChatColors.Red}使用方法: !vote <地圖名稱> (例如: !vote de_mirage)");
+            // 根據玩家輸入的指令前綴，智慧顯示提示（如果是點號開頭就顯示 .rtv）
+            string usedCmd = info.GetArg(0).StartsWith(".") ? ".rtv" : "!rtv";
+            player.PrintToChat($" {Prefix} {ChatColors.Red}使用方法: {usedCmd} <地圖名稱> (例如: {usedCmd} de_mirage)");
             return;
         }
 
@@ -126,7 +130,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin //, IPluginConfig<SLAYER_V
         // 成功發起投票，刷新最後投票時間
         _lastVoteTime = Server.CurrentTime;
 
-        Server.PrintToChatAll($" {Prefix} 玩家 {ChatColors.Lime}{player.PlayerName}{ChatColors.White} 發起了換圖至 {ChatColors.Green}{_targetMap}{ChatColors.White} 的投票！");
+        Server.PrintToChatAll($" {Prefix} 玩家 {ChatColors.Lime}{player.PlayerName}{ChatColors.White} 發起了 RTV 換圖至 {ChatColors.Green}{_targetMap}{ChatColors.White} 的投票！");
     }
 
     private bool VoteResultCallback(YesNoVoteInfo info)
