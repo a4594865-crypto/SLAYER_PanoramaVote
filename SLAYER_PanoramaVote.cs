@@ -43,24 +43,30 @@ public partial class SLAYER_PanoramaVote : BasePlugin
 			return HookResult.Continue;
 		});
 
-        // 🎯 修正處：將 EventChatMessage 改為新版 API 的 EventPlayerChat
-        RegisterEventHandler<EventPlayerChat>((@event, info) =>
+        // 🎯 完美修復：使用 AddCommandHook 攔截 say 和 say_team，全版本通用且不依賴特定 Event 類別
+        AddCommandHook("say", OnPlayerSay);
+        AddCommandHook("say_team", OnPlayerSay);
+    }
+
+    // 🎯 聊天訊息攔截核心邏輯
+    private HookResult OnPlayerSay(CCSPlayerController? player, CommandInfo info)
+    {
+        if (player == null || !player.IsValid) return HookResult.Continue;
+
+        // 取得玩家輸入的完整對話字串 (去掉兩側引號與空格)
+        string text = info.ArgString.Trim('"').Trim();
+
+        // 如果玩家打的是 .rtv，幫他模擬成執行指令
+        if (text.StartsWith(".rtv", StringComparison.OrdinalIgnoreCase))
         {
-            var player = @event.Userid;
-            if (player == null || !player.IsValid) return HookResult.Continue;
-
-            // 🎯 修正處：新版 API 取得聊天內容的屬性是 .Text 
-            string text = @event.Text.Trim();
+            string[] parts = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            ExecuteRtvLogic(player, parts);
             
-            // 如果玩家打的是 .rtv，幫他模擬成執行指令
-            if (text.StartsWith(".rtv", StringComparison.OrdinalIgnoreCase))
-            {
-                string[] parts = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                ExecuteRtvLogic(player, parts);
-            }
+            // 🎯 選擇性：返回 Handled 可以讓 ".rtv" 這三個字不顯示在聊天框，畫面更乾淨
+            return HookResult.Continue; 
+        }
 
-            return HookResult.Continue;
-        });
+        return HookResult.Continue;
     }
 
     // 保留後台指令入口以供前置支援
