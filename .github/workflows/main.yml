@@ -27,4 +27,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: SLAYER_PanoramaVote-Net10  # 這是你下載時看到的壓縮包名稱
-        path: '**/bin/Release/net10.0/SLAYER_PanoramaVote.dll' # 這裡會抓取編譯出的插件本體
+        path: '**/bin/Release/net8.0/SLAYER_PanoramaVote.dll' # 這裡會抓取編譯出的插件本體
