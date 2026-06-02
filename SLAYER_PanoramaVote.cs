@@ -30,7 +30,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         "de_nuke", 
         "de_anubis", 
         "de_ancient", 
-        "de_overpass" 
+        "de_vertigo" 
     };
 
     public override void Load(bool hotReload)
@@ -43,13 +43,14 @@ public partial class SLAYER_PanoramaVote : BasePlugin
 			return HookResult.Continue;
 		});
 
-        // 直接攔截玩家聊天訊息，讓 .rtv 完全相容
-        RegisterEventHandler<EventChatMessage>((@event, info) =>
+        // 🎯 修正處：將 EventChatMessage 改為新版 API 的 EventPlayerChat
+        RegisterEventHandler<EventPlayerChat>((@event, info) =>
         {
             var player = @event.Userid;
             if (player == null || !player.IsValid) return HookResult.Continue;
 
-            string text = @event.Param2.Trim();
+            // 🎯 修正處：新版 API 取得聊天內容的屬性是 .Text 
+            string text = @event.Text.Trim();
             
             // 如果玩家打的是 .rtv，幫他模擬成執行指令
             if (text.StartsWith(".rtv", StringComparison.OrdinalIgnoreCase))
@@ -112,7 +113,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             return;
         }
 
-        // 1. 檢查參數是否足夠（統一改為 .rtv 提示格式）
+        // 1. 檢查參數是否足夠
         if (args.Length < 2)
         {
             player.PrintToChat($" {Prefix} 使 用 方 法: .rtv <地 圖 名 稱> 例 如： {ChatColors.Yellow}.rtv de_mirage{ChatColors.White}");
