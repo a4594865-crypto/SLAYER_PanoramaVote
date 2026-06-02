@@ -11,7 +11,7 @@ namespace SLAYER_PanoramaVote;
 public partial class SLAYER_PanoramaVote : BasePlugin
 {
     public override string ModuleName => "SLAYER_PanoramaVote";
-    public override string ModuleVersion => "1.6"; 
+    public override string ModuleVersion => "1.6_Final"; 
     public override string ModuleAuthor => "SLAYER";
     public override string ModuleDescription => "Panorama RTV with Player Count, Warmup, Cooldown and Dot-command support";
     public CPanoramaVote voteHandler; 
@@ -50,10 +50,8 @@ public partial class SLAYER_PanoramaVote : BasePlugin
     {
         if (player == null || !player.IsValid) return;
 
-        // 取得玩家輸入的完整對話字串 (去掉兩側引號與空格)
         string text = info.ArgString.Trim('"').Trim();
 
-        // 如果玩家打的是 .rtv，幫他模擬成執行指令
         if (text.StartsWith(".rtv", StringComparison.OrdinalIgnoreCase))
         {
             string[] parts = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
@@ -94,18 +92,18 @@ public partial class SLAYER_PanoramaVote : BasePlugin
     // 將所有換圖檢查與邏輯抽取出來，供共同調用
     private void ExecuteRtvLogic(CCSPlayerController player, string[] args)
     {
-        // 檢查當前是否為暖場時間
+        // 🎯 核心防線：管你是 CSTV、觀察者還是剛進服的 Bot，只要不是 CT 隊也不是 T 隊，就絕對無法發起投票！
+        if (player.TeamNum != (byte)CsTeam.Terrorist && player.TeamNum != (byte)CsTeam.CounterTerrorist)
+        {
+            player.PrintToChat($" {Prefix} {ChatColors.Red}只有在 CT 或 T 的玩家才能發起投票！");
+            return;
+        }
+
+        // 檢查當前是否為暖場時間 (配合你的無限暖場)
         var gameRules = Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules").FirstOrDefault();
         if (gameRules == null || gameRules.GameRules == null || !gameRules.GameRules.WarmupPeriod)
         {
             player.PrintToChat($" {Prefix} 投 票 換 圖 只 能 在{ChatColors.Yellow} 暖 場 時 間 {ChatColors.White}內 使 用");
-            return;
-        }
-
-        // 精確判斷輸入指令的人是不是在 CT 還是在 T (TS)
-        if (player.TeamNum != (byte)CsTeam.Terrorist && player.TeamNum != (byte)CsTeam.CounterTerrorist)
-        {
-            player.PrintToChat($" {Prefix} 觀 察 者 玩 家 無 法 發 起 投 票");
             return;
         }
 
@@ -178,7 +176,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
 
     private bool VoteResultCallback(YesNoVoteInfo info)
     {
-        // 將日誌邏輯簡化，避免插值表達式衝突
+        // 修正 177~178 行編譯錯誤
         foreach (var kvp in info.clientInfo) 
         {
             int slot = kvp.Value.Item1;
