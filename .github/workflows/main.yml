@@ -12,7 +12,7 @@ jobs:
     - name: Setup .NET 10 SDK
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '10.0.x'
+        dotnet-version: '8.0.x'
         cache: true             
         cache-dependency-path: '**/SLAYER_PanoramaVote.csproj'
 
