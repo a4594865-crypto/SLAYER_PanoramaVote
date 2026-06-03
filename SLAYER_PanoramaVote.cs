@@ -134,7 +134,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         // 1. 檢查參數是否足夠
         if (args.Length < 2)
         {
-            player.PrintToChat($" {Prefix} 使 用 方 法： .rtv  <地 圖 名 稱>  例 如： {ChatColors.Yellow}.RTV de_mirage{ChatColors.White}");
+            player.PrintToChat($" {Prefix} 使 用 方 法： {ChatColors.Yellow}.RTV de_mirage{ChatColors.White}");
             return;
         }
 
