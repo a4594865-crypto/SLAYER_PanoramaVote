@@ -146,7 +146,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         voteHandler.Init(); 
 
         voteHandler.SendYesNoVoteToAll(
-            20.0f, 
+            30.0f, 
             player.Slot, 
             "#SFUI_vote_changelevel", 
             _targetMap, 
@@ -172,7 +172,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             Server.PrintToChatAll($" {Prefix} 投 票 通 過！ {ChatColors.Green}3 秒 {ChatColors.White}後 更 換 地 圖 至 {ChatColors.Green}{_targetMap}");
             string mapCmd = _targetMap;
             
-            AddTimer(3.0f, () =>
+            AddTimer(5.0f, () =>
             {
                 Server.ExecuteCommand($"changelevel {mapCmd}");
             });
