@@ -84,9 +84,9 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             if (parts.Length == 1)
             {
                 player.PrintToChat($" {Prefix} 投 票 系 統 說 明：");
-                player.PrintToChat($" {Prefix} 發 起 換 圖：請 輸 入 {ChatColors.Yellow}.rtv <地圖名稱>{ChatColors.White}");
-                player.PrintToChat($" {Prefix} 發 起 洗 牌：請 輸 入 {ChatColors.Yellow}.vote shuffle{ChatColors.White}");
-                player.PrintToChat($" {Prefix} 取 消 洗 牌：請 輸 入 {ChatColors.Yellow}.vote unshuffle{ChatColors.White}");
+                player.PrintToChat($" {Prefix} 發 起 投 票 換 圖：請 輸 入 {ChatColors.Yellow}.rtv <地圖名稱>{ChatColors.White}");
+                player.PrintToChat($" {Prefix} 發 起 隨 機 分 隊：請 輸 入 {ChatColors.Yellow}.vote shuffle{ChatColors.White}");
+                player.PrintToChat($" {Prefix} 取 消 隨 機 分 隊：請 輸 入 {ChatColors.Yellow}.vote unshuffle{ChatColors.White}");
                 return HookResult.Handled;
             }
 
