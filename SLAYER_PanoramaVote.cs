@@ -234,7 +234,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
 
         if (activePlayerCount < MinPlayersRequired)
         {
-            player.PrintToChat($" {Prefix} 人 數 不 足！需 要 {ChatColors.Green}{MinPlayersRequired} 人 {ChatColors.White}以 上 才 能 發 起 投 票 (當前: {activePlayerCount}人)。");
+            player.PrintToChat($" {Prefix} 人 數 不 足！需 要 {ChatColors.Green}{MinPlayersRequired} 人 {ChatColors.White}以 上 才 能 發 起 投 票");
             return false;
         }
 
