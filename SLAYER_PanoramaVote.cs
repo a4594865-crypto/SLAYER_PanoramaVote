@@ -19,7 +19,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
     public CPanoramaVote voteHandler; 
     string Prefix = $" [{ChatColors.Green}系統訊息{ChatColors.White}]";
     
-    // 升級：加入 Unshuffle (取消洗牌) 狀態
+    // 加入 Unshuffle (取消洗牌) 狀態
     private enum VoteType { None, MapChange, Shuffle, Unshuffle }
     private VoteType _currentVoteType = VoteType.None;
 
@@ -49,7 +49,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         AddCommandListener("say", OnPlayerSay);
         AddCommandListener("say_team", OnPlayerSay);
 
-        // 終極修補：當新地圖載入時，強制清空上一張圖留下來的防護鎖與冷卻時間！
+        // 當新地圖載入時，強制清空上一張圖留下來的防護鎖與冷卻時間！
         RegisterListener<Listeners.OnMapStart>(mapName => 
         {
             _isMapChanging = false;
@@ -80,10 +80,10 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         {
             string[] parts = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             
-            //  升級版選單：加入取消洗牌說明
+            //  加入取消洗牌說明
             if (parts.Length == 1)
             {
-                player.PrintToChat($" {Prefix} 投 票 系 統 說 明 {ChatColors.Silver}[ {ChatColors.Yellow}限 熱 身 階 段 使 用 {ChatColors.Silver}]{ChatColors.White}：");
+                player.PrintToChat($" {Prefix} 投 票 系 統 說 明 {ChatColors.Silver}[ {ChatColors.Yellow}限 熱 身 階 段 使 用 {ChatColors.Silver}]{ChatColors.White}");
                 player.PrintToChat($" {Prefix} 發 起 投 票 換 圖：請 輸 入 {ChatColors.Yellow}.rtv 地圖名稱{ChatColors.White}");
                 player.PrintToChat($" {Prefix} 發 起 隨 機 分 隊：請 輸 入 {ChatColors.Yellow}.vote shuffle{ChatColors.White}");
                 player.PrintToChat($" {Prefix} 取 消 隨 機 分 隊：請 輸 入 {ChatColors.Yellow}.vote unshuffle{ChatColors.White}");
@@ -302,11 +302,11 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             {
                 string voteName = _currentVoteType == VoteType.Shuffle ? "洗 牌" : "取 消 洗 牌";
                 int requiredVotes = (int)Math.Ceiling(activePlayerCount * 0.8);
-                Server.PrintToChatAll($" {Prefix} {voteName} 投 票 失 敗！需 達 8 成 同 意");
+                Server.PrintToChatAll($" {Prefix} {voteName} 投 票 失 敗！需 達 8 成 玩 家 同 意");
             }
             else
             {
-                Server.PrintToChatAll($" {Prefix} 投 票 失 敗，維 持 現 狀。");
+                Server.PrintToChatAll($" {Prefix} 投 票 失 敗，將 維 持 隊 伍 不 變");
             }
             
             _currentVoteType = VoteType.None; 
