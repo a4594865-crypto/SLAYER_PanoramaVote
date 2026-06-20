@@ -65,7 +65,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         
         string text = info.GetArg(1).Trim('"').Trim().ToLower();
         
-        // 1. 偵測到 .rtv 指令 (換圖)
+        // 1. 維持原狀：偵測到 .rtv 指令 (換圖投票)
         if (text.StartsWith(".rtv"))
         {
             string[] parts = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
@@ -73,17 +73,35 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             return HookResult.Handled; 
         }
         
-        // 2. 💡 偵測到 .vshuffle 或 .vs 指令 (隨機洗牌)
-        if (text.StartsWith(".vshuffle") || text.StartsWith(".vs"))
+        // 2. 💡 升級版：偵測到 .vote 指令
+        if (text.StartsWith(".vote"))
         {
-            ExecuteShuffleVoteLogic(player);
+            string[] parts = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            
+            // 情境 A：如果玩家「只輸入 .vote」，給他親切的提示選單
+            if (parts.Length == 1)
+            {
+                player.PrintToChat($" {Prefix} 投 票 系 統 說 明：");
+                player.PrintToChat($" {Prefix} 發 起 換 圖：請 輸 入 {ChatColors.Yellow}.rtv <地圖名稱>{ChatColors.White}");
+                player.PrintToChat($" {Prefix} 發 起 洗 牌：請 輸 入 {ChatColors.Yellow}.vote shuffle{ChatColors.White}");
+                return HookResult.Handled;
+            }
+
+            // 情境 B：如果玩家輸入「.vote shuffle」，啟動洗牌投票！
+            if (parts.Length >= 2 && parts[1] == "shuffle")
+            {
+                ExecuteShuffleVoteLogic(player);
+                return HookResult.Handled;
+            }
+            
+            // 情境 C：如果他打了 .vote 但後面亂打字
+            player.PrintToChat($" {Prefix} 無 效 的 投 票 指 令！請 單 獨 輸 入 {ChatColors.Yellow}.vote{ChatColors.White} 查 看 說 明。");
             return HookResult.Handled;
         }
 
-        // 如果是一般聊天，放行給系統處理
+        // 如果是一般聊天，放行給原生系統處理
         return HookResult.Continue;
     }
-
     [ConsoleCommand("css_rtv", "發起 RTV 投票更換地圖")]
     public void OnCommandVote(CCSPlayerController? player, CommandInfo info) 
     {
@@ -96,7 +114,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         ExecuteRtvLogic(player, args);
     }
 
-    // 💡 新增：隨機洗牌的 Console 指令
+    // 新增：隨機洗牌的 Console 指令
     [ConsoleCommand("css_vshuffle", "發起隨機分隊投票")]
     public void OnCommandShuffleVote(CCSPlayerController? player, CommandInfo info) 
     {
@@ -155,11 +173,11 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         _currentVoteType = VoteType.Shuffle; // 標記為洗牌投票
         voteHandler.Init(); 
 
-        // 💡 核心魔改：直接塞入純文字作為 UI 標題！
+        // 核心魔改：直接塞入純文字作為 UI 標題！
         voteHandler.SendYesNoVoteToAll(
             30.0f, 
             player.Slot, 
-            "是否同意開啟【隨機分隊】？", // 👈 自訂標題
+            "是否同意開啟【隨機分隊】？", //  自訂標題
             "",                           // 參數留空
             VoteResultCallback, 
             VoteHandlerCallback
