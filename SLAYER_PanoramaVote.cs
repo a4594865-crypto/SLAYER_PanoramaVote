@@ -83,7 +83,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             //  升級版選單：加入取消洗牌說明
             if (parts.Length == 1)
             {
-                player.PrintToChat($" {Prefix} 投 票 系 統 說 明 {ChatColors.DarkGray}[ {ChatColors.Yellow}限 熱 身 階 段 使 用 {ChatColors.DarkGray}]{ChatColors.White}：");
+                player.PrintToChat($" {Prefix} 投 票 系 統 說 明 {ChatColors.Silver}[ {ChatColors.Yellow}限 熱 身 階 段 使 用 {ChatColors.Silver}]{ChatColors.White}：");
                 player.PrintToChat($" {Prefix} 發 起 投 票 換 圖：請 輸 入 {ChatColors.Yellow}.rtv <地圖名稱>{ChatColors.White}");
                 player.PrintToChat($" {Prefix} 發 起 隨 機 分 隊：請 輸 入 {ChatColors.Yellow}.vote shuffle{ChatColors.White}");
                 player.PrintToChat($" {Prefix} 取 消 隨 機 分 隊：請 輸 入 {ChatColors.Yellow}.vote unshuffle{ChatColors.White}");
