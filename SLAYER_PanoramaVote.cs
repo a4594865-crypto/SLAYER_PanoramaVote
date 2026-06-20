@@ -267,7 +267,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         }
         else if (_currentVoteType == VoteType.Shuffle || _currentVoteType == VoteType.Unshuffle)
         {
-            // 升級：洗牌與「取消洗牌」都必須嚴格遵守 8 成門檻！
+            // 洗牌與「取消洗牌」都必須嚴格遵守 8 成門檻！
             int requiredVotes = (int)Math.Ceiling(activePlayerCount * 0.8);
             isVotePassed = info.yes_votes >= requiredVotes;
         }
@@ -288,7 +288,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             }
             else if (_currentVoteType == VoteType.Unshuffle)
             {
-                //  升級：通過後自動呼叫 MatchZy 的取消指令
+                //  通過後自動呼叫 MatchZy 的取消指令
                 Server.PrintToChatAll($" {Prefix} 投 票 通 過「 {ChatColors.LightRed}已 取 消 隨 機 隊 伍 分 配 {ChatColors.Default}」 維 持 隊 伍 不 變");
                 Server.ExecuteCommand("css_unshuffle");
             }
