@@ -182,10 +182,10 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         _currentVoteType = VoteType.Shuffle; 
         voteHandler.Init(); 
 
-        voteHandler.SendYesNoVoteToAll(30.0f, player.Slot, "是否同意開啟【隨機分隊】？", "", VoteResultCallback, VoteHandlerCallback);
+        voteHandler.SendYesNoVoteToAll(30.0f, player.Slot, "是否同意【隨機分隊】", "", VoteResultCallback, VoteHandlerCallback);
 
         _lastVoteTime = Server.CurrentTime;
-        Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 {ChatColors.Lime}隨 機 分 隊{ChatColors.White} 投 票！");
+        Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 {ChatColors.Lime}隨 機 分 隊{ChatColors.White} 投 票");
     }
 
     // ==========================================
@@ -198,10 +198,10 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         _currentVoteType = VoteType.Unshuffle; 
         voteHandler.Init(); 
 
-        voteHandler.SendYesNoVoteToAll(30.0f, player.Slot, "是否同意【取消隨機分隊】？", "", VoteResultCallback, VoteHandlerCallback);
+        voteHandler.SendYesNoVoteToAll(30.0f, player.Slot, "是否同意【取消隨機分隊】", "", VoteResultCallback, VoteHandlerCallback);
 
         _lastVoteTime = Server.CurrentTime;
-        Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 {ChatColors.LightRed}取 消 隨 機 分 隊{ChatColors.White} 投 票！");
+        Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 {ChatColors.LightRed}取 消 隨 機 分 隊{ChatColors.White} 投 票");
     }
 
     // ==========================================
@@ -211,26 +211,26 @@ public partial class SLAYER_PanoramaVote : BasePlugin
     {
         if (player.TeamNum != (byte)CsTeam.Terrorist && player.TeamNum != (byte)CsTeam.CounterTerrorist)
         {
-            player.PrintToChat($" {Prefix} {ChatColors.Red}只 有 在 CT 或 T 的 玩 家 才 能 發 起 投 票！");
+            player.PrintToChat($" {Prefix} {ChatColors.Red}只 有 在 CT 或 T 的 玩 家 才 能 發 起 投 票");
             return false;
         }
 
         if (_isMapChanging)
         {
-            player.PrintToChat($" {Prefix} {ChatColors.Red}地 圖 即 將 更 換，請 稍 候。");
+            player.PrintToChat($" {Prefix} {ChatColors.Red}地 圖 即 將 更 換，請 稍 候");
             return false;
         }
 
         if (voteHandler.IsVoteInProgress())
         {
-            player.PrintToChat($" {Prefix} {ChatColors.Red}當 前 已 有 投 票 正 在 進 行 中，請 稍 後 再 試。");
+            player.PrintToChat($" {Prefix} {ChatColors.Red}當 前 已 有 投 票 正 在 進 行 中，請 稍 後 再 試");
             return false;
         }
 
         var gameRules = Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules").FirstOrDefault();
         if (gameRules == null || gameRules.GameRules == null || !gameRules.GameRules.WarmupPeriod)
         {
-            player.PrintToChat($" {Prefix} 投 票 系 統 只 能 在{ChatColors.Yellow} 暖 場 時 間 {ChatColors.White}內 使 用。");
+            player.PrintToChat($" {Prefix} 投 票 系 統 只 能 在{ChatColors.Yellow} 暖 場 時 間 {ChatColors.White}內 使 用");
             return false;
         }
 
@@ -246,7 +246,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         if (currentTime - _lastVoteTime < CooldownTime)
         {
             int timeLeft = (int)Math.Ceiling(CooldownTime - (currentTime - _lastVoteTime));
-            player.PrintToChat($" {Prefix} 投 票 冷 卻 中，請 等 待 {ChatColors.Green}{timeLeft} {ChatColors.White}秒 後 再 試。");
+            player.PrintToChat($" {Prefix} 投 票 冷 卻 中，請 等 待 {ChatColors.Green}{timeLeft} {ChatColors.White}秒 後 再 試");
             return false;
         }
 
@@ -279,7 +279,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
                 _isMapChanging = true; 
                 Server.PrintToChatAll($" {Prefix} 投 票 通 過！ {ChatColors.Green}5 秒 {ChatColors.White}後 更 換 地 圖 至 {ChatColors.Green}{_targetMap}");
                 string mapCmd = _targetMap;
-                AddTimer(5.0f, () => { Server.ExecuteCommand($"changelevel {mapCmd}"); });
+                AddTimer(7.0f, () => { Server.ExecuteCommand($"changelevel {mapCmd}"); });
             }
             else if (_currentVoteType == VoteType.Shuffle)
             {
