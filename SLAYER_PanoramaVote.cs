@@ -145,7 +145,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         {
             player.PrintToChat($" {Prefix} 使 用 方 法： {ChatColors.Yellow}.rtv de_mirage{ChatColors.White}");
             player.PrintToChat($" {Prefix} 可 用 地 圖： {ChatColors.LightPurple}{string.Join(", ", _allowedMaps)}{ChatColors.White}");
-            player.PrintToChat($" {Prefix} 隨 機 分 隊： 請 改 輸 入 {ChatColors.Yellow}.vote shuffle{ChatColors.White}");
             return;
         }
 
