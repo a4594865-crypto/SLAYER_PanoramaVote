@@ -139,14 +139,17 @@ public partial class SLAYER_PanoramaVote : BasePlugin
     // ==========================================
     private void ExecuteRtvLogic(CCSPlayerController player, string[] args)
     {
-        if (!PassCommonVoteChecks(player)) return;
-
+        // 修正：「使用說明」的判斷拉到最上面！
+        // 就算未滿 6 人，玩家忘記打地圖名稱時也能看到提示，而不是被「人數不足」擋住。
         if (args.Length < 2)
         {
             player.PrintToChat($" {Prefix} 使 用 方 法： {ChatColors.Yellow}.rtv de_mirage{ChatColors.White}");
             player.PrintToChat($" {Prefix} 可 用 地 圖 池： {ChatColors.LightPurple}{string.Join(", ", _allowedMaps)}{ChatColors.White}");
             return;
         }
+
+        // 玩家確實輸入了地圖 (例如 .rtv de_dust2) 後，才啟動嚴格的防護網與 6 人門檻檢查
+        if (!PassCommonVoteChecks(player)) return;
 
         string inputMap = args[1].Trim().ToLower();
         string? matchedMap = _allowedMaps.FirstOrDefault(m => m.ToLower() == inputMap);
