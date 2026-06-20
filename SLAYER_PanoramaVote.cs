@@ -84,7 +84,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             if (parts.Length == 1)
             {
                 player.PrintToChat($" {Prefix} 投 票 系 統 說 明 {ChatColors.Silver}[ {ChatColors.Yellow}限 熱 身 階 段 使 用 {ChatColors.Silver}]{ChatColors.White}：");
-                player.PrintToChat($" {Prefix} 發 起 投 票 換 圖：請 輸 入 {ChatColors.Yellow}.rtv <地圖名稱>{ChatColors.White}");
+                player.PrintToChat($" {Prefix} 發 起 投 票 換 圖：請 輸 入 {ChatColors.Yellow}.rtv 地圖名稱{ChatColors.White}");
                 player.PrintToChat($" {Prefix} 發 起 隨 機 分 隊：請 輸 入 {ChatColors.Yellow}.vote shuffle{ChatColors.White}");
                 player.PrintToChat($" {Prefix} 取 消 隨 機 分 隊：請 輸 入 {ChatColors.Yellow}.vote unshuffle{ChatColors.White}");
                 return HookResult.Handled;
@@ -103,7 +103,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
                 return HookResult.Handled;
             }
             
-            player.PrintToChat($" {Prefix} 無 效 的 投 票 指 令！請 單 獨 輸 入 {ChatColors.Yellow}.vote{ChatColors.White} 查 看 說 明。");
+            player.PrintToChat($" {Prefix} 無 效 指 令！請 輸 入 {ChatColors.Yellow}.vote{ChatColors.White} 或 {ChatColors.Yellow}.rtv{ChatColors.White} 查 看 說 明");
             return HookResult.Handled;
         }
 
@@ -143,7 +143,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         // 就算未滿 6 人，玩家忘記打地圖名稱時也能看到提示，而不是被「人數不足」擋住。
         if (args.Length < 2)
         {
-            player.PrintToChat($" {Prefix} 投 票 說 明 {ChatColors.DarkGray}[ {ChatColors.Yellow}限 熱 身 階 段 使 用 {ChatColors.DarkGray}]{ChatColors.White}：");
+            player.PrintToChat($" {Prefix} 投 票 說 明 {ChatColors.Silver}[ {ChatColors.Yellow}限 熱 身 階 段 使 用 {ChatColors.Silver}]{ChatColors.White}：");
             player.PrintToChat($" {Prefix} 使 用 方 法： {ChatColors.Yellow}.rtv de_mirage{ChatColors.White}");
             player.PrintToChat($" {Prefix} 可 用 地 圖： {ChatColors.Yellow}{string.Join(", ", _allowedMaps)}{ChatColors.White}");
             return;
