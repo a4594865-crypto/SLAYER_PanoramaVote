@@ -143,7 +143,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         // 就算未滿 6 人，玩家忘記打地圖名稱時也能看到提示，而不是被「人數不足」擋住。
         if (args.Length < 2)
         {
-            player.PrintToChat($" {Prefix} 投 票 說 明 {ChatColors.Silver}[ {ChatColors.Yellow}限 熱 身 階 段 使 用 {ChatColors.Silver}]{ChatColors.White}：");
+            player.PrintToChat($" {Prefix} 投 票 說 明 {ChatColors.Silver}[ {ChatColors.Yellow}限 熱 身 階 段 使 用 {ChatColors.Silver}]{ChatColors.White}");
             player.PrintToChat($" {Prefix} 使 用 方 法： {ChatColors.Yellow}.rtv de_mirage{ChatColors.White}");
             player.PrintToChat($" {Prefix} 可 用 地 圖： {ChatColors.Yellow}{string.Join(", ", _allowedMaps)}{ChatColors.White}");
             return;
