@@ -279,13 +279,13 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             }
             else if (_currentVoteType == VoteType.Shuffle)
             {
-                Server.PrintToChatAll($" {Prefix} 投 票 通 過！{ChatColors.Lime}系 統 將 開 啟 隨 機 分 隊");
+                Server.PrintToChatAll($" {Prefix} 投 票 通 過「 {ChatColors.Lime}已 開 啟 隨 機 隊 伍 分 配 {ChatColors.Default}」 將 自 動 洗 牌");
                 Server.ExecuteCommand("css_shuffle");
             }
             else if (_currentVoteType == VoteType.Unshuffle)
             {
                 //  升級：通過後自動呼叫 MatchZy 的取消指令
-                Server.PrintToChatAll($" {Prefix} 投 票 通 過！{ChatColors.LightRed}系 統 將 取 消 隨 機 分 隊");
+                Server.PrintToChatAll($" {Prefix} 投 票 通 過「 {ChatColors.LightRed}已 取 消 隨 機 隊 伍 分 配 {ChatColors.Default}」 維 持 隊 伍 不 變");
                 Server.ExecuteCommand("css_unshuffle");
             }
 
