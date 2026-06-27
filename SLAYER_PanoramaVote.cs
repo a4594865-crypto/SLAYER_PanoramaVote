@@ -183,7 +183,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
     voteHandler.Init(); 
 
     // 【修改這裡】改成原生的通用空標籤，確保 100% 彈出 UI
-    voteHandler.SendYesNoVoteToAll(60.0f, player.Slot, "#SFUI_vote_scramble_teams", "", VoteResultCallback, VoteHandlerCallback);
+    voteHandler.SendYesNoVoteToAll(50.0f, player.Slot, "#SFUI_vote_scramble_teams", "", VoteResultCallback, VoteHandlerCallback);
 
     _lastVoteTime = Server.CurrentTime;
     Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 {ChatColors.Lime}隨 機 分 隊{ChatColors.White} 投 票");
@@ -200,7 +200,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
     voteHandler.Init(); 
 
     // 【修改這裡】一樣改成原生的通用空標籤
-    voteHandler.SendYesNoVoteToAll(60.0f, player.Slot, "#SFUI_Scoreboard_Undo", "", VoteResultCallback, VoteHandlerCallback);
+    voteHandler.SendYesNoVoteToAll(50.0f, player.Slot, "#SFUI_Scoreboard_Undo", "", VoteResultCallback, VoteHandlerCallback);
 
     _lastVoteTime = Server.CurrentTime;
     Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 {ChatColors.LightRed}取 消 隨 機 分 隊{ChatColors.White} 投 票");
