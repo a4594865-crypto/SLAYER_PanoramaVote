@@ -25,8 +25,8 @@ public partial class SLAYER_PanoramaVote : BasePlugin
 
     private string _targetMap = string.Empty;
     private double _lastVoteTime = 0.0; 
-    private const double CooldownTime = 120.0; 
-    private const int MinPlayersRequired = 6; 
+    private const double CooldownTime = 180.0; 
+    private const int MinPlayersRequired = 1; 
 
     private bool _isMapChanging = false;
 
@@ -166,7 +166,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         _currentVoteType = VoteType.MapChange; 
         voteHandler.Init(); 
 
-        voteHandler.SendYesNoVoteToAll(30.0f, player.Slot, "#SFUI_vote_changelevel", _targetMap, VoteResultCallback, VoteHandlerCallback);
+        voteHandler.SendYesNoVoteToAll(60.0f, player.Slot, "#SFUI_vote_changelevel", _targetMap, VoteResultCallback, VoteHandlerCallback);
 
         _lastVoteTime = Server.CurrentTime;
         Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 投 票 換 圖 至 {ChatColors.Green}{_targetMap}{ChatColors.White}");
@@ -176,33 +176,35 @@ public partial class SLAYER_PanoramaVote : BasePlugin
     // 邏輯二：隨機洗牌投票 (VShuffle)
     // ==========================================
     private void ExecuteShuffleVoteLogic(CCSPlayerController player)
-    {
-        if (!PassCommonVoteChecks(player)) return;
+{
+    if (!PassCommonVoteChecks(player)) return;
 
-        _currentVoteType = VoteType.Shuffle; 
-        voteHandler.Init(); 
+    _currentVoteType = VoteType.Shuffle; 
+    voteHandler.Init(); 
 
-        voteHandler.SendYesNoVoteToAll(30.0f, player.Slot, "是否同意【隨機分隊】", "", VoteResultCallback, VoteHandlerCallback);
+    // 【修改這裡】改成原生的通用空標籤，確保 100% 彈出 UI
+    voteHandler.SendYesNoVoteToAll(60.0f, player.Slot, "#SFUI_Vote_None", "", VoteResultCallback, VoteHandlerCallback);
 
-        _lastVoteTime = Server.CurrentTime;
-        Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 {ChatColors.Lime}隨 機 分 隊{ChatColors.White} 投 票");
-    }
+    _lastVoteTime = Server.CurrentTime;
+    Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 {ChatColors.Lime}隨 機 分 隊{ChatColors.White} 投 票");
+}
 
     // ==========================================
     // 邏輯三：取消隨機洗牌投票 (VUnshuffle)
     // ==========================================
     private void ExecuteUnshuffleVoteLogic(CCSPlayerController player)
-    {
-        if (!PassCommonVoteChecks(player)) return;
+{
+    if (!PassCommonVoteChecks(player)) return;
 
-        _currentVoteType = VoteType.Unshuffle; 
-        voteHandler.Init(); 
+    _currentVoteType = VoteType.Unshuffle; 
+    voteHandler.Init(); 
 
-        voteHandler.SendYesNoVoteToAll(30.0f, player.Slot, "是否同意【取消隨機分隊】", "", VoteResultCallback, VoteHandlerCallback);
+    // 【修改這裡】一樣改成原生的通用空標籤
+    voteHandler.SendYesNoVoteToAll(60.0f, player.Slot, "#SFUI_Vote_None", "", VoteResultCallback, VoteHandlerCallback);
 
-        _lastVoteTime = Server.CurrentTime;
-        Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 {ChatColors.LightRed}取 消 隨 機 分 隊{ChatColors.White} 投 票");
-    }
+    _lastVoteTime = Server.CurrentTime;
+    Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 {ChatColors.LightRed}取 消 隨 機 分 隊{ChatColors.White} 投 票");
+}
 
     // ==========================================
     // 共用防護檢查 
