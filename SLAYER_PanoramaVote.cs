@@ -59,7 +59,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             // 如果熱身已經結束（進入刀局或正式比賽），但投票還在進行中
             if (gameRules != null && gameRules.GameRules != null && !gameRules.GameRules.WarmupPeriod)
             {
-                if (voteHandler.IsVoteInProgress())
+                if (_currentVoteType != VoteType.None)
                 {
                     voteHandler.CancelVote();
                     Server.PrintToChatAll($" {Prefix} {ChatColors.Red}比賽已正式開始，尚未完成的投票已被系統強制取消！");
