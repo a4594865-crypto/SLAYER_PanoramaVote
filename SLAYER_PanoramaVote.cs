@@ -374,5 +374,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin
                     _currentVoteType = VoteType.None; 
                 }
                 break;
-        }
-    }
+        } 
+    } 
+} 
