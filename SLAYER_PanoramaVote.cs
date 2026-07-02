@@ -25,7 +25,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
 
     private string _targetMap = string.Empty;
     private double _lastVoteTime = 0.0; 
-    private const double CooldownTime = 180.0; 
+    private const double CooldownTime = 240.0; 
     private const int MinPlayersRequired = 6; 
 
     private bool _isMapChanging = false;
@@ -62,7 +62,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
                 if (_currentVoteType != VoteType.None)
                 {
                     voteHandler.CancelVote();
-                    Server.PrintToChatAll($" {Prefix} {ChatColors.Red}比賽已正式開始，尚未完成的投票已被系統強制取消！");
+                    Server.PrintToChatAll($" {Prefix} 比賽已正式開始，尚未完成的投票已被系統強制取消");
                     
                     // 確保狀態清空
                     _currentVoteType = VoteType.None;
@@ -100,7 +100,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             // 只有在「正在投票中」的時候，才會觸發攔截並銷毀指令
             if (_currentVoteType != VoteType.None)
             {
-                player.PrintToChat($" {Prefix} {ChatColors.Red}投票正在進行中，請先按左上角 {ChatColors.Green} [ F 1 是 ]{ChatColors.White} 或 {ChatColors.DarkRed}[ F 2 否 ] 完成投票後再準備");
+                player.PrintToChat($" {Prefix} {ChatColors.Red}投票進行中，請先按左上角 {ChatColors.Green} [ F 1 是 ]{ChatColors.White} 或 {ChatColors.DarkRed}[ F 2 否 ] 完成投票後再準備");
                 return HookResult.Stop; // 強制攔截這句話，不讓 MatchZy 收到
             }
             // 如果沒有在投票，程式會直接無視這裡，順暢走到最下方的 HookResult.Continue 讓 MatchZy 接收
@@ -255,11 +255,11 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             return false;
         }
 
-        if (voteHandler.IsVoteInProgress())
-        {
-            player.PrintToChat($" {Prefix} {ChatColors.Red}當 前 已 有 投 票 正 在 進 行 中，請 稍 後 再 試");
-            return false;
-        }
+        if (_currentVoteType != VoteType.None)
+{
+    player.PrintToChat($" {Prefix} {ChatColors.Red}當 前 已 有 投 票 正 在 進 行 中，請 稍 後 再 試");
+    return false;
+}
 
         var gameRules = Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules").FirstOrDefault();
         if (gameRules == null || gameRules.GameRules == null || !gameRules.GameRules.WarmupPeriod)
@@ -366,12 +366,13 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             case YesNoVoteAction.VoteAction_Vote:
                 break;
             case YesNoVoteAction.VoteAction_End:
-    if ((YesNoVoteEndReason)param1 == YesNoVoteEndReason.VoteEnd_Cancelled)
-        Server.PrintToChatAll($" {Prefix} {ChatColors.Red}投 票 已 被 系 統 取 消。");
-    
-    // 終極防護：不管投票是怎麼結束的，一律強制解除狀態鎖！
-    _currentVoteType = VoteType.None; 
-    break;
+                // 修正：加上大括號。只有在「被異常取消」時，才在這裡強制解鎖！
+                // 正常結束的話，會交給上面的 VoteResultCallback 結算並解鎖，以免狀態被提早清空！
+                if ((YesNoVoteEndReason)param1 == YesNoVoteEndReason.VoteEnd_Cancelled)
+                {
+                    Server.PrintToChatAll($" {Prefix} {ChatColors.Red}投 票 已 被 系 統 取 消。");
+                    _currentVoteType = VoteType.None; 
+                }
+                break;
         }
     }
-}
