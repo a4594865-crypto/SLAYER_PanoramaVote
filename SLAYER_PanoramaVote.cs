@@ -98,7 +98,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         if (text == ".r" || text == ".ready" || text == "!r" || text == "!ready" || text == ".unready" || text == "!unready")
         {
             // 只有在「正在投票中」的時候，才會觸發攔截並銷毀指令
-            if (voteHandler.IsVoteInProgress())
+            if (_currentVoteType != VoteType.None)
             {
                 player.PrintToChat($" {Prefix} {ChatColors.Red}投票正在進行中，請先按左上角 {ChatColors.Green} [ F 1 是 ]{ChatColors.White} 或 {ChatColors.DarkRed}[ F 2 否 ] 完成投票後再準備");
                 return HookResult.Stop; // 強制攔截這句話，不讓 MatchZy 收到
@@ -366,9 +366,12 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             case YesNoVoteAction.VoteAction_Vote:
                 break;
             case YesNoVoteAction.VoteAction_End:
-                if ((YesNoVoteEndReason)param1 == YesNoVoteEndReason.VoteEnd_Cancelled)
-                    Server.PrintToChatAll($" {Prefix} {ChatColors.Red}投 票 已 被 系 統 取 消。");
-                break;
+    if ((YesNoVoteEndReason)param1 == YesNoVoteEndReason.VoteEnd_Cancelled)
+        Server.PrintToChatAll($" {Prefix} {ChatColors.Red}投 票 已 被 系 統 取 消。");
+    
+    // 終極防護：不管投票是怎麼結束的，一律強制解除狀態鎖！
+    _currentVoteType = VoteType.None; 
+    break;
         }
     }
 }
