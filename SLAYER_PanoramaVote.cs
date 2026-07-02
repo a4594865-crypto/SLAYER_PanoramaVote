@@ -49,6 +49,28 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         AddCommandListener("say", OnPlayerSay);
         AddCommandListener("say_team", OnPlayerSay);
 
+        // ==========================================
+        // 防護二：正式開賽時，強制銷毀所有投票 (死亡開關)
+        // ==========================================
+        RegisterEventHandler<EventRoundStart>((@event, info) =>
+        {
+            var gameRules = Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules").FirstOrDefault();
+            
+            // 如果熱身已經結束（進入刀局或正式比賽），但投票還在進行中
+            if (gameRules != null && gameRules.GameRules != null && !gameRules.GameRules.WarmupPeriod)
+            {
+                if (voteHandler.IsVoteInProgress())
+                {
+                    voteHandler.CancelVote();
+                    Server.PrintToChatAll($" {Prefix} {ChatColors.Red}比賽已正式開始，尚未完成的投票已被系統強制取消！");
+                    
+                    // 確保狀態清空
+                    _currentVoteType = VoteType.None;
+                }
+            }
+            return HookResult.Continue;
+        });
+
         // 當新地圖載入時，強制清空上一張圖留下來的防護鎖與冷卻時間！
         RegisterListener<Listeners.OnMapStart>(mapName => 
         {
@@ -63,11 +85,26 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             return HookResult.Continue;
         });
     }
+
     private HookResult OnPlayerSay(CCSPlayerController? player, CommandInfo info)
     {
         if (player == null || !player.IsValid) return HookResult.Continue;
         
         string text = info.GetArg(1).Trim('"').Trim().ToLower();
+
+        // ==========================================
+        // 防護一：攔截 MatchZy 的準備/取消準備指令
+        // ==========================================
+        if (text == ".r" || text == ".ready" || text == "!r" || text == "!ready" || text == ".unready" || text == "!unready")
+        {
+            // 只有在「正在投票中」的時候，才會觸發攔截並銷毀指令
+            if (voteHandler.IsVoteInProgress())
+            {
+                player.PrintToChat($" {Prefix} {ChatColors.Red}目前有投票正在進行中，請先按左上角 F1/F2 完成投票後再準備！");
+                return HookResult.Stop; // 強制攔截這句話，不讓 MatchZy 收到
+            }
+            // 如果沒有在投票，程式會直接無視這裡，順暢走到最下方的 HookResult.Continue 讓 MatchZy 接收
+        }
         
         if (text.StartsWith(".rtv"))
         {
@@ -139,8 +176,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin
     // ==========================================
     private void ExecuteRtvLogic(CCSPlayerController player, string[] args)
     {
-        // 修正：「使用說明」的判斷拉到最上面！
-        // 就算未滿 6 人，玩家忘記打地圖名稱時也能看到提示，而不是被「人數不足」擋住。
         if (args.Length < 2)
         {
             player.PrintToChat($" {Prefix} 投 票 說 明 {ChatColors.Silver}[ {ChatColors.Green}限 熱 身 階 段 使 用 {ChatColors.Silver}]{ChatColors.White}");
@@ -149,7 +184,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             return;
         }
 
-        // 玩家確實輸入了地圖 (例如 .rtv de_dust2) 後，才啟動嚴格的防護網與 6 人門檻檢查
         if (!PassCommonVoteChecks(player)) return;
 
         string inputMap = args[1].Trim().ToLower();
@@ -176,35 +210,33 @@ public partial class SLAYER_PanoramaVote : BasePlugin
     // 邏輯二：隨機洗牌投票 (VShuffle)
     // ==========================================
     private void ExecuteShuffleVoteLogic(CCSPlayerController player)
-{
-    if (!PassCommonVoteChecks(player)) return;
+    {
+        if (!PassCommonVoteChecks(player)) return;
 
-    _currentVoteType = VoteType.Shuffle; 
-    voteHandler.Init(); 
+        _currentVoteType = VoteType.Shuffle; 
+        voteHandler.Init(); 
 
-    // 【修改這裡】改成原生的通用空標籤，確保 100% 彈出 UI
-    voteHandler.SendYesNoVoteToAll(50.0f, player.Slot, "#SFUI_vote_scramble_teams", "", VoteResultCallback, VoteHandlerCallback);
+        voteHandler.SendYesNoVoteToAll(50.0f, player.Slot, "#SFUI_vote_scramble_teams", "", VoteResultCallback, VoteHandlerCallback);
 
-    _lastVoteTime = Server.CurrentTime;
-    Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 {ChatColors.Lime}隨 機 分 隊{ChatColors.White} 投 票");
-}
+        _lastVoteTime = Server.CurrentTime;
+        Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 {ChatColors.Lime}隨 機 分 隊{ChatColors.White} 投 票");
+    }
 
     // ==========================================
     // 邏輯三：取消隨機洗牌投票 (VUnshuffle)
     // ==========================================
     private void ExecuteUnshuffleVoteLogic(CCSPlayerController player)
-{
-    if (!PassCommonVoteChecks(player)) return;
+    {
+        if (!PassCommonVoteChecks(player)) return;
 
-    _currentVoteType = VoteType.Unshuffle; 
-    voteHandler.Init(); 
+        _currentVoteType = VoteType.Unshuffle; 
+        voteHandler.Init(); 
 
-    // 【修改這裡】一樣改成原生的通用空標籤
-    voteHandler.SendYesNoVoteToAll(50.0f, player.Slot, "#SFUI_Scoreboard_Undo", "", VoteResultCallback, VoteHandlerCallback);
+        voteHandler.SendYesNoVoteToAll(50.0f, player.Slot, "#SFUI_Scoreboard_Undo", "", VoteResultCallback, VoteHandlerCallback);
 
-    _lastVoteTime = Server.CurrentTime;
-    Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 {ChatColors.LightRed}取 消 隨 機 分 隊{ChatColors.White} 投 票");
-}
+        _lastVoteTime = Server.CurrentTime;
+        Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 {ChatColors.LightRed}取 消 隨 機 分 隊{ChatColors.White} 投 票");
+    }
 
     // ==========================================
     // 共用防護檢查 
@@ -281,7 +313,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin
                 _isMapChanging = true; 
                 Server.PrintToChatAll($" {Prefix} 投 票 通 過！ {ChatColors.Green}5 秒 {ChatColors.White}後 更 換 地 圖 至 {ChatColors.Green}{_targetMap}");
                 
-                // 新增：換圖 Log
                 Console.WriteLine($"[PanoramaVote] 投票通過：5秒後準備更換地圖至 {_targetMap}。");
                 
                 string mapCmd = _targetMap;
@@ -291,17 +322,14 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             {
                 Server.PrintToChatAll($" {Prefix} 投 票 通 過「 {ChatColors.Lime}已 開 啟 隨 機 隊 伍 分 配 {ChatColors.Default}」 將 自 動 洗 牌");
                 
-                // 新增：洗牌 Log
                 Console.WriteLine("投票通過：已觸發自動洗牌 執行了 css_shuffle 指令");
                 
                 Server.ExecuteCommand("css_shuffle");
             }
             else if (_currentVoteType == VoteType.Unshuffle)
             {
-                //  通過後自動呼叫 MatchZy 的取消指令
                 Server.PrintToChatAll($" {Prefix} 投 票 通 過「 {ChatColors.LightRed}已 取 消 隨 機 隊 伍 分 配 {ChatColors.Default}」 維 持 隊 伍 不 變");
                 
-                // 新增：取消洗牌 Log
                 Console.WriteLine("投票通過：已取消自動洗牌 執行了 css_unshuffle 指令");
                 
                 Server.ExecuteCommand("css_unshuffle");
