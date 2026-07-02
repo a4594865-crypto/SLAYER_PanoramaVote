@@ -100,7 +100,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             // 只有在「正在投票中」的時候，才會觸發攔截並銷毀指令
             if (voteHandler.IsVoteInProgress())
             {
-                player.PrintToChat($" {Prefix} {ChatColors.Red}目前有投票正在進行中，請先按左上角 F1/F2 完成投票後再準備！");
+                player.PrintToChat($" {Prefix} {ChatColors.Red}投票正在進行中，請先按左上角 {ChatColors.Green} [ F 1 是 ]{ChatColors.White} 或 {ChatColors.DarkRed}[ F 2 否 ] 完成投票後再準備");
                 return HookResult.Stop; // 強制攔截這句話，不讓 MatchZy 收到
             }
             // 如果沒有在投票，程式會直接無視這裡，順暢走到最下方的 HookResult.Continue 讓 MatchZy 接收
