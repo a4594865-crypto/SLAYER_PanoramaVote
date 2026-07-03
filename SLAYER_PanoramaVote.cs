@@ -218,9 +218,9 @@ public partial class SLAYER_PanoramaVote : BasePlugin
 
 voteHandler.SendYesNoVoteToAll(
     60.0f, 
-    VoteConstants.VOTE_CALLER_SERVER,
+    player.Slot, // 💡 換回真實玩家
     "#SFUI_vote_panorama_vote_default", 
-    $"由 {player.PlayerName} 發起：隨 機 分 隊", 
+    "同意隨機打亂隊伍 (洗牌) 嗎？", // 系統會自動加上名字，這裡寫重點就好
     VoteResultCallback, 
     VoteHandlerCallback
 );
