@@ -100,7 +100,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             // 只有在「正在投票中」的時候，才會觸發攔截並銷毀指令
             if (_currentVoteType != VoteType.None)
             {
-                player.PrintToChat($" {Prefix} {ChatColors.Red}投票進行中，請先按左上角 {ChatColors.Green} [ F 1 是 ]{ChatColors.White} 或 {ChatColors.DarkRed}[ F 2 否 ] 完成投票後再準備");
+                player.PrintToChat($" {Prefix} 投票進行中 {ChatColors.Green} [ F 1 是 ]{ChatColors.White} 或 {ChatColors.DarkRed}[ F 2 否 ] {ChatColors.White}完成投票後再準備");
                 return HookResult.Stop; // 強制攔截這句話，不讓 MatchZy 收到
             }
             // 如果沒有在投票，程式會直接無視這裡，順暢走到最下方的 HookResult.Continue 讓 MatchZy 接收
@@ -344,7 +344,7 @@ voteHandler.SendYesNoVoteToAll(60.0f, player.Slot, "#SFUI_vote_scramble_teams", 
             {
                 string voteName = _currentVoteType == VoteType.Shuffle ? "洗 牌" : "取 消 洗 牌";
                 int requiredVotes = (int)Math.Ceiling(activePlayerCount * 0.8);
-                Server.PrintToChatAll($" {Prefix} {voteName} 投 票 失 敗！需 達 8 成 玩 家 同 意");
+                Server.PrintToChatAll($" {Prefix} {voteName} 投 票 失 敗！需 達 {ChatColors.Green}8 成{ChatColors.Default} 玩 家 同 意");
             }
             else
             {
