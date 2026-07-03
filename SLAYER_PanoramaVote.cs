@@ -26,7 +26,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
     private string _targetMap = string.Empty;
     private double _lastVoteTime = 0.0; 
     private const double CooldownTime = 240.0; 
-    private const int MinPlayersRequired = 6; 
+    private const int MinPlayersRequired = 1; 
 
     private bool _isMapChanging = false;
 
@@ -216,7 +216,14 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         _currentVoteType = VoteType.Shuffle; 
         voteHandler.Init(); 
 
-        voteHandler.SendYesNoVoteToAll(60.0f, player.Slot, "#SFUI_vote_scramble_teams", "", VoteResultCallback, VoteHandlerCallback);
+voteHandler.SendYesNoVoteToAll(
+    60.0f, 
+    VoteConstants.VOTE_CALLER_SERVER,
+    "#SFUI_vote_panorama_vote_default", 
+    $"由 {player.PlayerName} 發起：隨 機 分 隊", 
+    VoteResultCallback, 
+    VoteHandlerCallback
+);
 
         _lastVoteTime = Server.CurrentTime;
         Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 {ChatColors.Lime}隨 機 分 隊{ChatColors.White} 投 票");
