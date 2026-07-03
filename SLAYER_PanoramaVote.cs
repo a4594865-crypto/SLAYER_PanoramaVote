@@ -216,14 +216,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         _currentVoteType = VoteType.Shuffle; 
         voteHandler.Init(); 
 
-voteHandler.SendYesNoVoteToAll(
-    60.0f, 
-    player.Slot, // 💡 換回真實玩家
-    "#SFUI_vote_panorama_vote_default", 
-    "同意隨機打亂隊伍 (洗牌) 嗎？", // 系統會自動加上名字，這裡寫重點就好
-    VoteResultCallback, 
-    VoteHandlerCallback
-);
+voteHandler.SendYesNoVoteToAll(60.0f, player.Slot, "#SFUI_vote_scramble_teams", "", VoteResultCallback, VoteHandlerCallback);
 
         _lastVoteTime = Server.CurrentTime;
         Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 {ChatColors.Lime}隨 機 分 隊{ChatColors.White} 投 票");
