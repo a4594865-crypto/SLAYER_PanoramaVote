@@ -25,7 +25,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
 
     private string _targetMap = string.Empty;
     private double _lastVoteTime = 0.0; 
-    private const double CooldownTime = 180.0; 
+    private const double CooldownTime = 150.0; 
     private const int MinPlayersRequired = 6; 
 
     private bool _isMapChanging = false;
