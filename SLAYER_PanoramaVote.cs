@@ -37,7 +37,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         "de_nuke", 
         "de_anubis", 
         "de_ancient", 
-        "de_overpass" 
+        "de_cache" 
     };
 
     public override void Load(bool hotReload)
