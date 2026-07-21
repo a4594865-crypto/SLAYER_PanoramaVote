@@ -24,8 +24,12 @@ public partial class SLAYER_PanoramaVote : BasePlugin
     private VoteType _currentVoteType = VoteType.None;
 
     private string _targetMap = string.Empty;
-    private double _lastVoteTime = 0.0; 
-    private const double CooldownTime = 120.0; 
+    
+    // --- 獨立冷卻計時器 ---
+    private double _lastMapVoteTime = 0.0;      // 換圖專用冷卻計時
+    private double _lastShuffleVoteTime = 0.0;  // 洗牌/取消洗牌專用冷卻計時
+    
+    private const double CooldownTime = 90.0; 
     private const int MinPlayersRequired = 6; 
 
     private bool _isMapChanging = false;
@@ -76,7 +80,8 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         {
             _isMapChanging = false;
             _currentVoteType = VoteType.None;
-            _lastVoteTime = 0.0; // 冷卻時間歸零
+            _lastMapVoteTime = 0.0;      // 換圖冷卻歸零
+            _lastShuffleVoteTime = 0.0;  // 洗牌冷卻歸零
         });
 
         RegisterEventHandler<EventVoteCast>((@event, info) =>
@@ -184,7 +189,8 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             return;
         }
 
-        if (!PassCommonVoteChecks(player)) return;
+        // 傳入 VoteType.MapChange 檢查換圖冷卻
+        if (!PassCommonVoteChecks(player, VoteType.MapChange)) return;
 
         string inputMap = args[1].Trim().ToLower();
         string? matchedMap = _allowedMaps.FirstOrDefault(m => m.ToLower() == inputMap);
@@ -202,7 +208,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin
 
         voteHandler.SendYesNoVoteToAll(60.0f, player.Slot, "#SFUI_vote_changelevel", _targetMap, VoteResultCallback, VoteHandlerCallback);
 
-        _lastVoteTime = Server.CurrentTime;
+        _lastMapVoteTime = Server.CurrentTime; // 只更新換圖計時器
         Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 投 票 換 圖 至 {ChatColors.Green}{_targetMap}{ChatColors.White}");
     }
 
@@ -211,14 +217,15 @@ public partial class SLAYER_PanoramaVote : BasePlugin
     // ==========================================
     private void ExecuteShuffleVoteLogic(CCSPlayerController player)
     {
-        if (!PassCommonVoteChecks(player)) return;
+        // 傳入 VoteType.Shuffle 檢查洗牌冷卻
+        if (!PassCommonVoteChecks(player, VoteType.Shuffle)) return;
 
         _currentVoteType = VoteType.Shuffle; 
         voteHandler.Init(); 
 
-voteHandler.SendYesNoVoteToAll(60.0f, player.Slot, "#SFUI_vote_scramble_teams", "", VoteResultCallback, VoteHandlerCallback);
+        voteHandler.SendYesNoVoteToAll(60.0f, player.Slot, "#SFUI_vote_scramble_teams", "", VoteResultCallback, VoteHandlerCallback);
 
-        _lastVoteTime = Server.CurrentTime;
+        _lastShuffleVoteTime = Server.CurrentTime; // 更新洗牌計時器
         Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 {ChatColors.Lime}隨 機 分 隊{ChatColors.White} 投 票");
     }
 
@@ -227,21 +234,22 @@ voteHandler.SendYesNoVoteToAll(60.0f, player.Slot, "#SFUI_vote_scramble_teams", 
     // ==========================================
     private void ExecuteUnshuffleVoteLogic(CCSPlayerController player)
     {
-        if (!PassCommonVoteChecks(player)) return;
+        // 傳入 VoteType.Unshuffle 檢查洗牌冷卻
+        if (!PassCommonVoteChecks(player, VoteType.Unshuffle)) return;
 
         _currentVoteType = VoteType.Unshuffle; 
         voteHandler.Init(); 
 
         voteHandler.SendYesNoVoteToAll(60.0f, player.Slot, "#SFUI_Scoreboard_Undo", "", VoteResultCallback, VoteHandlerCallback);
 
-        _lastVoteTime = Server.CurrentTime;
+        _lastShuffleVoteTime = Server.CurrentTime; // 洗牌和取消洗牌共用同一個計時器
         Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 {ChatColors.LightRed}取 消 隨 機 分 隊{ChatColors.White} 投 票");
     }
 
     // ==========================================
-    // 共用防護檢查 
+    // 共用防護檢查 (加入請求類型參數)
     // ==========================================
-    private bool PassCommonVoteChecks(CCSPlayerController player)
+    private bool PassCommonVoteChecks(CCSPlayerController player, VoteType requestedType)
     {
         if (player.TeamNum != (byte)CsTeam.Terrorist && player.TeamNum != (byte)CsTeam.CounterTerrorist)
         {
@@ -256,10 +264,10 @@ voteHandler.SendYesNoVoteToAll(60.0f, player.Slot, "#SFUI_vote_scramble_teams", 
         }
 
         if (_currentVoteType != VoteType.None)
-{
-    player.PrintToChat($" {Prefix} {ChatColors.Red}當 前 已 有 投 票 正 在 進 行 中，請 稍 後 再 試");
-    return false;
-}
+        {
+            player.PrintToChat($" {Prefix} {ChatColors.Red}當 前 已 有 投 票 正 在 進 行 中，請 稍 後 再 試");
+            return false;
+        }
 
         var gameRules = Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules").FirstOrDefault();
         if (gameRules == null || gameRules.GameRules == null || !gameRules.GameRules.WarmupPeriod)
@@ -276,11 +284,15 @@ voteHandler.SendYesNoVoteToAll(60.0f, player.Slot, "#SFUI_vote_scramble_teams", 
             return false;
         }
 
+        // --- 核心修改：動態判斷要檢查哪一個冷卻時間 ---
         double currentTime = Server.CurrentTime;
-        if (currentTime - _lastVoteTime < CooldownTime)
+        double targetLastTime = (requestedType == VoteType.MapChange) ? _lastMapVoteTime : _lastShuffleVoteTime;
+        string voteTypeName = (requestedType == VoteType.MapChange) ? "換 圖" : "隊 伍 洗 牌";
+
+        if (currentTime - targetLastTime < CooldownTime)
         {
-            int timeLeft = (int)Math.Ceiling(CooldownTime - (currentTime - _lastVoteTime));
-            player.PrintToChat($" {Prefix} 投 票 冷 卻 中，請 等 待 {ChatColors.Green}{timeLeft} {ChatColors.White}秒 後 再 試");
+            int timeLeft = (int)Math.Ceiling(CooldownTime - (currentTime - targetLastTime));
+            player.PrintToChat($" {Prefix} {voteTypeName}投 票 冷 卻 中，請 等 待 {ChatColors.Green}{timeLeft} {ChatColors.White}秒 後 再 試");
             return false;
         }
 
@@ -366,8 +378,7 @@ voteHandler.SendYesNoVoteToAll(60.0f, player.Slot, "#SFUI_vote_scramble_teams", 
             case YesNoVoteAction.VoteAction_Vote:
                 break;
             case YesNoVoteAction.VoteAction_End:
-                // 修正：加上大括號。只有在「被異常取消」時，才在這裡強制解鎖！
-                // 正常結束的話，會交給上面的 VoteResultCallback 結算並解鎖，以免狀態被提早清空！
+                // 只有在「被異常取消」時，才在這裡強制解鎖！
                 if ((YesNoVoteEndReason)param1 == YesNoVoteEndReason.VoteEnd_Cancelled)
                 {
                     Server.PrintToChatAll($" {Prefix} {ChatColors.Red}投 票 已 被 系 統 取 消。");
@@ -376,4 +387,4 @@ voteHandler.SendYesNoVoteToAll(60.0f, player.Slot, "#SFUI_vote_scramble_teams", 
                 break;
         } 
     } 
-} 
+}
