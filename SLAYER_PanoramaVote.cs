@@ -325,6 +325,12 @@ public partial class SLAYER_PanoramaVote : BasePlugin
                 _isMapChanging = true; 
                 Server.PrintToChatAll($" {Prefix} 投 票 通 過！ {ChatColors.Green}5 秒 {ChatColors.White}後 更 換 地 圖 至 {ChatColors.Green}{_targetMap}");
                 
+                // 新增：換圖的 HUD 畫面中央提示
+                foreach (var p in Utilities.GetPlayers().Where(p => p != null && p.IsValid && !p.IsBot))
+                {
+                    p.PrintToCenter($"投 票 通 過：5 秒 後 更 換 地 圖 {_targetMap}");
+                }
+                
                 Console.WriteLine($"[PanoramaVote] 投票通過：5秒後準備更換地圖至 {_targetMap}。");
                 
                 string mapCmd = _targetMap;
@@ -334,6 +340,12 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             {
                 Server.PrintToChatAll($" {Prefix} 投 票 通 過「 {ChatColors.Lime}已 開 啟 隨 機 隊 伍 分 配 {ChatColors.Default}」 將 自 動 洗 牌");
                 
+                // 新增：HUD 畫面中央提示
+                foreach (var p in Utilities.GetPlayers().Where(p => p != null && p.IsValid && !p.IsBot))
+                {
+                    p.PrintToCenter("投 票 通 過：已 開 啟 隨 機 隊 伍 分 配");
+                }
+                
                 Console.WriteLine("投票通過：已觸發自動洗牌 執行了 css_shuffle 指令");
                 
                 Server.ExecuteCommand("css_shuffle");
@@ -341,6 +353,12 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             else if (_currentVoteType == VoteType.Unshuffle)
             {
                 Server.PrintToChatAll($" {Prefix} 投 票 通 過「 {ChatColors.LightRed}已 取 消 隨 機 隊 伍 分 配 {ChatColors.Default}」 維 持 隊 伍 不 變");
+                
+                // 新增：HUD 畫面中央提示
+                foreach (var p in Utilities.GetPlayers().Where(p => p != null && p.IsValid && !p.IsBot))
+                {
+                    p.PrintToCenter("投 票 通 過：已 取 消 隨 機 隊 伍 分 配");
+                }
                 
                 Console.WriteLine("投票通過：已取消自動洗牌 執行了 css_unshuffle 指令");
                 
