@@ -26,8 +26,8 @@ public partial class SLAYER_PanoramaVote : BasePlugin
     private string _targetMap = string.Empty;
     
     // --- 獨立冷卻計時器 ---
-    private double _lastMapVoteTime = -9999.0;      // 換圖專用冷卻計時 (避免開局誤判)
-    private double _lastShuffleVoteTime = -9999.0;  // 洗牌/取消洗牌專用冷卻計時 (避免開局誤判)
+    private double _lastMapVoteTime = 0.0;      // 換圖專用冷卻計時
+    private double _lastShuffleVoteTime = 0.0;  // 洗牌/取消洗牌專用冷卻計時
     
     private const double CooldownTime = 90.0; 
     private const int MinPlayersRequired = 6; 
@@ -80,8 +80,8 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         {
             _isMapChanging = false;
             _currentVoteType = VoteType.None;
-            _lastMapVoteTime = -9999.0;      // 換圖冷卻強制失效
-            _lastShuffleVoteTime = -9999.0;  // 洗牌冷卻強制失效
+            _lastMapVoteTime = 0.0;      // 換圖冷卻歸零
+            _lastShuffleVoteTime = 0.0;  // 洗牌冷卻歸零
         });
 
         RegisterEventHandler<EventVoteCast>((@event, info) =>
