@@ -6,43 +6,71 @@ using CounterStrikeSharp.API.Modules.Commands;
 using PanoramaVote; 
 using System;
 using System.Linq;
+using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace SLAYER_PanoramaVote;
 
 #pragma warning disable CS8618
-public partial class SLAYER_PanoramaVote : BasePlugin
+
+// ==========================================
+// 【更新】全數值抽離至設定檔 (Config)
+// ==========================================
+public class PanoramaVoteConfig : BasePluginConfig
+{
+    [JsonPropertyName("VoteDurationSeconds")]
+    public float VoteDurationSeconds { get; set; } = 60.0f; // 投票持續時間 (預設 60 秒)
+
+    [JsonPropertyName("VoteCooldownSeconds")]
+    public float VoteCooldownSeconds { get; set; } = 90.0f; // 【新增】兩次投票之間的冷卻時間 (預設 90 秒)
+
+    [JsonPropertyName("MinPlayersRequired")]
+    public int MinPlayersRequired { get; set; } = 6; // 最少需要多少真人玩家才能發起投票 (預設 6 人)
+
+    [JsonPropertyName("RequiredVotePercentage")]
+    public float RequiredVotePercentage { get; set; } = 0.8f; // 【新增】洗牌/取消洗牌所需的同意比例 (預設 0.8 即 80%)
+
+    [JsonPropertyName("JoinMessageDelaySeconds")]
+    public float JoinMessageDelaySeconds { get; set; } = 4.0f; // 玩家進服文字延遲顯示 (預設 4 秒)
+
+    [JsonPropertyName("JoinMessages")]
+    public List<string> JoinMessages { get; set; } = new List<string>
+    {
+        "{Prefix} {White}DEMO下載以及相關指令請至網站 {Lime}c2t.clouds.tw",
+        "{Prefix} {Orange}隨 機 隊 伍 {White}以及 {Orange}投 票 換 圖 {White}請參考網站相關指令",
+        "{Prefix} {Lime}建 議 反 饋 {White}與 {Lime}異 常 問 題 {White}請至網站填寫問題回報"
+    };
+}
+
+public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVoteConfig>
 {
     public override string ModuleName => "SLAYER_PanoramaVote";
-    public override string ModuleVersion => "2.1_UltimateVote_NET10"; 
+    public override string ModuleVersion => "2.4_UltimateVote_Config_Pro"; 
     public override string ModuleAuthor => "SLAYER / Optimized / UltimateVote";
-    public override string ModuleDescription => "Panorama RTV, Shuffle & Unshuffle Vote";
-    public CPanoramaVote voteHandler; 
-    string Prefix = $" [{ChatColors.Green}系統訊息{ChatColors.White}]";
+    public override string ModuleDescription => "Panorama RTV, Shuffle & Unshuffle Vote with Config";
     
-    // 加入 Unshuffle (取消洗牌) 狀態
+    public PanoramaVoteConfig Config { get; set; }
+    public CPanoramaVote voteHandler; 
+    
+    private readonly string Prefix = $" [{ChatColors.Green}系統訊息{ChatColors.White}]";
+    
     private enum VoteType { None, MapChange, Shuffle, Unshuffle }
     private VoteType _currentVoteType = VoteType.None;
-
     private string _targetMap = string.Empty;
     
-    // --- 獨立冷卻計時器 ---
-    private double _lastMapVoteTime = -9999.0;      // 換圖專用冷卻計時 (避免開局誤判)
-    private double _lastShuffleVoteTime = -9999.0;  // 洗牌/取消洗牌專用冷卻計時 (避免開局誤判)
+    private double _lastMapVoteTime = -9999.0;      
+    private double _lastShuffleVoteTime = -9999.0;  
     
-    private const double CooldownTime = 90.0; 
-    private const int MinPlayersRequired = 6; 
-
     private bool _isMapChanging = false;
 
     private readonly string[] _allowedMaps = { 
-        "de_mirage", 
-        "de_inferno", 
-        "de_dust2", 
-        "de_nuke", 
-        "de_anubis", 
-        "de_ancient", 
-        "de_cache" 
+        "de_mirage", "de_inferno", "de_dust2", "de_nuke", "de_anubis", "de_ancient", "de_cache" 
     };
+
+    public void OnConfigParsed(PanoramaVoteConfig config)
+    {
+        Config = config;
+    }
 
     public override void Load(bool hotReload)
     {
@@ -53,35 +81,46 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         AddCommandListener("say", OnPlayerSay);
         AddCommandListener("say_team", OnPlayerSay);
 
-        // ==========================================
-        // 防護二：正式開賽時，強制銷毀所有投票 (死亡開關)
-        // ==========================================
+        RegisterListener<Listeners.OnClientPutInServer>(playerSlot =>
+        {
+            var initialPlayer = Utilities.GetPlayerFromSlot(playerSlot);
+            if (initialPlayer == null || !initialPlayer.IsValid || initialPlayer.IsBot || initialPlayer.IsHLTV) return;
+
+            AddTimer(Config.JoinMessageDelaySeconds, () => 
+            {
+                var p = Utilities.GetPlayerFromSlot(playerSlot);
+                if (p != null && p.IsValid)
+                {
+                    foreach (var msg in Config.JoinMessages)
+                    {
+                        p.PrintToChat(ReplaceColorTags(msg));
+                    }
+                }
+            });
+        });
+
         RegisterEventHandler<EventRoundStart>((@event, info) =>
         {
             var gameRules = Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules").FirstOrDefault();
             
-            // 如果熱身已經結束（進入刀局或正式比賽），但投票還在進行中
             if (gameRules != null && gameRules.GameRules != null && !gameRules.GameRules.WarmupPeriod)
             {
                 if (_currentVoteType != VoteType.None)
                 {
                     voteHandler.CancelVote();
                     Server.PrintToChatAll($" {Prefix} 比賽已正式開始，尚未完成的投票已被系統強制取消");
-                    
-                    // 確保狀態清空
                     _currentVoteType = VoteType.None;
                 }
             }
             return HookResult.Continue;
         });
 
-        // 當新地圖載入時，強制清空上一張圖留下來的防護鎖與冷卻時間！
         RegisterListener<Listeners.OnMapStart>(mapName => 
         {
             _isMapChanging = false;
             _currentVoteType = VoteType.None;
-            _lastMapVoteTime = -9999.0;      // 換圖冷卻強制失效
-            _lastShuffleVoteTime = -9999.0;  // 洗牌冷卻強制失效
+            _lastMapVoteTime = -9999.0;      
+            _lastShuffleVoteTime = -9999.0;  
         });
 
         RegisterEventHandler<EventVoteCast>((@event, info) =>
@@ -97,18 +136,13 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         
         string text = info.GetArg(1).Trim('"').Trim().ToLower();
 
-        // ==========================================
-        // 防護一：攔截 MatchZy 的準備/取消準備指令
-        // ==========================================
         if (text == ".r" || text == ".ready" || text == "!r" || text == "!ready" || text == ".unready" || text == "!unready")
         {
-            // 只有在「正在投票中」的時候，才會觸發攔截並銷毀指令
             if (_currentVoteType != VoteType.None)
             {
                 player.PrintToChat($" {Prefix} 投票進行中 {ChatColors.Green} [ F 1 是 ]{ChatColors.White} 或 {ChatColors.DarkRed}[ F 2 否 ] {ChatColors.White}完成投票後再準備");
-                return HookResult.Stop; // 強制攔截這句話，不讓 MatchZy 收到
+                return HookResult.Stop; 
             }
-            // 如果沒有在投票，程式會直接無視這裡，順暢走到最下方的 HookResult.Continue 讓 MatchZy 接收
         }
         
         if (text.StartsWith(".rtv"))
@@ -122,7 +156,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         {
             string[] parts = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             
-            //  加入取消洗牌說明
             if (parts.Length == 1)
             {
                 player.PrintToChat($" {Prefix} 投 票 系 統 說 明 {ChatColors.Silver}[ {ChatColors.Green}限 熱 身 階 段 使 用 {ChatColors.Silver}]{ChatColors.White}");
@@ -138,7 +171,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin
                 return HookResult.Handled;
             }
 
-            // 新增：偵測取消洗牌指令
             if (parts.Length >= 2 && parts[1] == "unshuffle")
             {
                 ExecuteUnshuffleVoteLogic(player);
@@ -168,7 +200,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         ExecuteShuffleVoteLogic(player);
     }
 
-    //新增後台指令：發起取消洗牌投票
     [ConsoleCommand("css_vunshuffle", "發起取消隨機分隊投票")]
     public void OnCommandUnshuffleVote(CCSPlayerController? player, CommandInfo info) 
     {
@@ -176,9 +207,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         ExecuteUnshuffleVoteLogic(player);
     }
 
-    // ==========================================
-    // 邏輯一：換地圖投票 (RTV)
-    // ==========================================
     private void ExecuteRtvLogic(CCSPlayerController player, string[] args)
     {
         if (args.Length < 2)
@@ -189,7 +217,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             return;
         }
 
-        // 傳入 VoteType.MapChange 檢查換圖冷卻
         if (!PassCommonVoteChecks(player, VoteType.MapChange)) return;
 
         string inputMap = args[1].Trim().ToLower();
@@ -206,49 +233,41 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         _currentVoteType = VoteType.MapChange; 
         voteHandler.Init(); 
 
-        voteHandler.SendYesNoVoteToAll(60.0f, player.Slot, "#SFUI_vote_changelevel", _targetMap, VoteResultCallback, VoteHandlerCallback);
+        // 使用 Config.VoteDurationSeconds 代替 60.0f
+        voteHandler.SendYesNoVoteToAll(Config.VoteDurationSeconds, player.Slot, "#SFUI_vote_changelevel", _targetMap, VoteResultCallback, VoteHandlerCallback);
 
-        _lastMapVoteTime = Server.CurrentTime; // 只更新換圖計時器
+        _lastMapVoteTime = Server.CurrentTime; 
         Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 投 票 換 圖 至 {ChatColors.Green}{_targetMap}{ChatColors.White}");
     }
 
-    // ==========================================
-    // 邏輯二：隨機洗牌投票 (VShuffle)
-    // ==========================================
     private void ExecuteShuffleVoteLogic(CCSPlayerController player)
     {
-        // 傳入 VoteType.Shuffle 檢查洗牌冷卻
         if (!PassCommonVoteChecks(player, VoteType.Shuffle)) return;
 
         _currentVoteType = VoteType.Shuffle; 
         voteHandler.Init(); 
+        
+        // 使用 Config.VoteDurationSeconds 代替 60.0f
+        voteHandler.SendYesNoVoteToAll(Config.VoteDurationSeconds, player.Slot, "#SFUI_vote_scramble_teams", "", VoteResultCallback, VoteHandlerCallback);
 
-        voteHandler.SendYesNoVoteToAll(60.0f, player.Slot, "#SFUI_vote_scramble_teams", "", VoteResultCallback, VoteHandlerCallback);
-
-        _lastShuffleVoteTime = Server.CurrentTime; // 更新洗牌計時器
+        _lastShuffleVoteTime = Server.CurrentTime; 
         Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 {ChatColors.Lime}隨 機 分 隊{ChatColors.White} 投 票");
     }
 
-    // ==========================================
-    // 邏輯三：取消隨機洗牌投票 (VUnshuffle)
-    // ==========================================
     private void ExecuteUnshuffleVoteLogic(CCSPlayerController player)
     {
-        // 傳入 VoteType.Unshuffle 檢查洗牌冷卻
         if (!PassCommonVoteChecks(player, VoteType.Unshuffle)) return;
 
         _currentVoteType = VoteType.Unshuffle; 
         voteHandler.Init(); 
+        
+        // 使用 Config.VoteDurationSeconds 代替 60.0f
+        voteHandler.SendYesNoVoteToAll(Config.VoteDurationSeconds, player.Slot, "#SFUI_Scoreboard_Undo", "", VoteResultCallback, VoteHandlerCallback);
 
-        voteHandler.SendYesNoVoteToAll(60.0f, player.Slot, "#SFUI_Scoreboard_Undo", "", VoteResultCallback, VoteHandlerCallback);
-
-        _lastShuffleVoteTime = Server.CurrentTime; // 洗牌和取消洗牌共用同一個計時器
+        _lastShuffleVoteTime = Server.CurrentTime; 
         Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 {ChatColors.LightRed}取 消 隨 機 分 隊{ChatColors.White} 投 票");
     }
 
-    // ==========================================
-    // 共用防護檢查 (加入請求類型參數)
-    // ==========================================
     private bool PassCommonVoteChecks(CCSPlayerController player, VoteType requestedType)
     {
         if (player.TeamNum != (byte)CsTeam.Terrorist && player.TeamNum != (byte)CsTeam.CounterTerrorist)
@@ -278,20 +297,20 @@ public partial class SLAYER_PanoramaVote : BasePlugin
 
         int activePlayerCount = Utilities.GetPlayers().Count(p => p != null && p.IsValid && !p.IsBot && (p.TeamNum == 2 || p.TeamNum == 3));
 
-        if (activePlayerCount < MinPlayersRequired)
+        if (activePlayerCount < Config.MinPlayersRequired)
         {
-            player.PrintToChat($" {Prefix} 人 數 不 足！需 要 {ChatColors.Green}{MinPlayersRequired} 人 {ChatColors.White}以 上 才 能 發 起 投 票");
+            player.PrintToChat($" {Prefix} 人 數 不 足！需 要 {ChatColors.Green}{Config.MinPlayersRequired} 人 {ChatColors.White}以 上 才 能 發 起 投 票");
             return false;
         }
 
-        // --- 核心修改：動態判斷要檢查哪一個冷卻時間 ---
         double currentTime = Server.CurrentTime;
         double targetLastTime = (requestedType == VoteType.MapChange) ? _lastMapVoteTime : _lastShuffleVoteTime;
         string voteTypeName = (requestedType == VoteType.MapChange) ? "換 圖" : "隊 伍 洗 牌";
 
-        if (currentTime - targetLastTime < CooldownTime)
+        // 【更新】使用 Config.VoteCooldownSeconds
+        if (currentTime - targetLastTime < Config.VoteCooldownSeconds)
         {
-            int timeLeft = (int)Math.Ceiling(CooldownTime - (currentTime - targetLastTime));
+            int timeLeft = (int)Math.Ceiling(Config.VoteCooldownSeconds - (currentTime - targetLastTime));
             player.PrintToChat($" {Prefix} {voteTypeName}投 票 冷 卻 中，請 等 待 {ChatColors.Green}{timeLeft} {ChatColors.White}秒 後 再 試");
             return false;
         }
@@ -299,9 +318,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         return true;
     }
 
-    // ==========================================
-    // 投票結果處理中樞 
-    // ==========================================
     private bool VoteResultCallback(YesNoVoteInfo info)
     {
         int activePlayerCount = Utilities.GetPlayers().Count(p => p != null && p.IsValid && !p.IsBot && (p.TeamNum == 2 || p.TeamNum == 3));
@@ -313,8 +329,8 @@ public partial class SLAYER_PanoramaVote : BasePlugin
         }
         else if (_currentVoteType == VoteType.Shuffle || _currentVoteType == VoteType.Unshuffle)
         {
-            // 洗牌與「取消洗牌」都必須嚴格遵守 8 成門檻！
-            int requiredVotes = (int)Math.Ceiling(activePlayerCount * 0.8);
+            // 【更新】使用 Config.RequiredVotePercentage 代替 0.8
+            int requiredVotes = (int)Math.Ceiling(activePlayerCount * Config.RequiredVotePercentage);
             isVotePassed = info.yes_votes >= requiredVotes;
         }
 
@@ -325,28 +341,22 @@ public partial class SLAYER_PanoramaVote : BasePlugin
                 _isMapChanging = true; 
                 Server.PrintToChatAll($" {Prefix} 投 票 通 過！ {ChatColors.Green}5 秒 {ChatColors.White}後 更 換 地 圖 至 {ChatColors.Green}{_targetMap}");
                 
-                // 新增：換圖的 HUD 畫面中央提示
                 foreach (var p in Utilities.GetPlayers().Where(p => p != null && p.IsValid && !p.IsBot))
                 {
                     p.PrintToCenter($"投 票 通 過：5 秒 後 更 換 地 圖 {_targetMap}");
                 }
-                
-                Console.WriteLine($"[PanoramaVote] 投票通過：5秒後準備更換地圖至 {_targetMap}。");
                 
                 string mapCmd = _targetMap;
                 AddTimer(7.0f, () => { Server.ExecuteCommand($"changelevel {mapCmd}"); });
             }
             else if (_currentVoteType == VoteType.Shuffle)
             {
-                Server.PrintToChatAll($" {Prefix} 投 票 通 過「 {ChatColors.Lime}已 開 啟 隨 機 隊 伍 分 配 {ChatColors.Default}」 將 自 動 洗 牌");
+                Server.PrintToChatAll($" {Prefix} 投 票 通 過「 {ChatColors.Lime}已 開 啟 隨 機 隊 伍 分 配 {ChatColors.Default}」 將 自 自動 洗 牌");
                 
-                // 新增：HUD 畫面中央提示
                foreach (var p in Utilities.GetPlayers().Where(p => p != null && p.IsValid && !p.IsBot && (p.TeamNum == 2 || p.TeamNum == 3)))
                 {
                     p.PrintToCenter("投 票 通 過：已 開 啟 隨 機 隊 伍 分 配");
                 }
-                
-                Console.WriteLine("投票通過：已觸發自動洗牌 執行了 css_shuffle 指令");
                 
                 Server.ExecuteCommand("css_shuffle");
             }
@@ -354,13 +364,10 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             {
                 Server.PrintToChatAll($" {Prefix} 投 票 通 過「 {ChatColors.LightRed}已 取 消 隨 機 隊 伍 分 配 {ChatColors.Default}」 維 持 隊 伍 不 變");
                 
-                // 新增：HUD 畫面中央提示
                 foreach (var p in Utilities.GetPlayers().Where(p => p != null && p.IsValid && !p.IsBot && (p.TeamNum == 2 || p.TeamNum == 3)))
                 {
                     p.PrintToCenter("投 票 通 過：已 取 消 隨 機 隊 伍 分 配");
                 }
-                
-                Console.WriteLine("投票通過：已取消自動洗牌 執行了 css_unshuffle 指令");
                 
                 Server.ExecuteCommand("css_unshuffle");
             }
@@ -373,8 +380,10 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             if (_currentVoteType == VoteType.Shuffle || _currentVoteType == VoteType.Unshuffle)
             {
                 string voteName = _currentVoteType == VoteType.Shuffle ? "洗 牌" : "取 消 洗 牌";
-                int requiredVotes = (int)Math.Ceiling(activePlayerCount * 0.8);
-                Server.PrintToChatAll($" {Prefix} {voteName} 投 票 失 敗！需 達 {ChatColors.Green}8 成{ChatColors.Default} 玩 家 同 意");
+                
+                // 【更新】動態計算所需的百分比，取代原本的「8成」字眼
+                string requiredPercentText = $"{Math.Round(Config.RequiredVotePercentage * 100)}%";
+                Server.PrintToChatAll($" {Prefix} {voteName} 投 票 失 敗！需 達 {ChatColors.Green}{requiredPercentText}{ChatColors.Default} 玩 家 同 意");
             }
             else
             {
@@ -396,7 +405,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin
             case YesNoVoteAction.VoteAction_Vote:
                 break;
             case YesNoVoteAction.VoteAction_End:
-                // 只有在「被異常取消」時，才在這裡強制解鎖！
                 if ((YesNoVoteEndReason)param1 == YesNoVoteEndReason.VoteEnd_Cancelled)
                 {
                     Server.PrintToChatAll($" {Prefix} {ChatColors.Red}投 票 已 被 系 統 取 消。");
@@ -405,4 +413,22 @@ public partial class SLAYER_PanoramaVote : BasePlugin
                 break;
         } 
     } 
+    
+    private string ReplaceColorTags(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return input;
+        
+        return input
+            .Replace("{Prefix}", Prefix, StringComparison.OrdinalIgnoreCase)
+            .Replace("{White}", ChatColors.White.ToString(), StringComparison.OrdinalIgnoreCase)
+            .Replace("{Green}", ChatColors.Green.ToString(), StringComparison.OrdinalIgnoreCase)
+            .Replace("{Lime}", ChatColors.Lime.ToString(), StringComparison.OrdinalIgnoreCase)
+            .Replace("{Red}", ChatColors.Red.ToString(), StringComparison.OrdinalIgnoreCase)
+            .Replace("{LightRed}", ChatColors.LightRed.ToString(), StringComparison.OrdinalIgnoreCase)
+            .Replace("{DarkRed}", ChatColors.DarkRed.ToString(), StringComparison.OrdinalIgnoreCase)
+            .Replace("{Orange}", ChatColors.Orange.ToString(), StringComparison.OrdinalIgnoreCase)
+            .Replace("{Yellow}", ChatColors.Yellow.ToString(), StringComparison.OrdinalIgnoreCase)
+            .Replace("{Blue}", ChatColors.Blue.ToString(), StringComparison.OrdinalIgnoreCase)
+            .Replace("{Silver}", ChatColors.Silver.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
 }
