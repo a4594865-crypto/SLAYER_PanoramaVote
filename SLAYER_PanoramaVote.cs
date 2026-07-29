@@ -318,6 +318,9 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         return true;
     }
 
+    // ==========================================
+    // 投票結果處理中樞 (更新版：修正換圖失敗的語病)
+    // ==========================================
     private bool VoteResultCallback(YesNoVoteInfo info)
     {
         int activePlayerCount = Utilities.GetPlayers().Count(p => p != null && p.IsValid && !p.IsBot && (p.TeamNum == 2 || p.TeamNum == 3));
@@ -325,13 +328,12 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
 
         if (_currentVoteType == VoteType.MapChange)
         {
-            isVotePassed = info.yes_votes > info.no_votes;
+            isVotePassed = info.yes_votes > info.no_votes; // 換圖：多數決
         }
         else if (_currentVoteType == VoteType.Shuffle || _currentVoteType == VoteType.Unshuffle)
         {
-            // 【更新】使用 Config.RequiredVotePercentage 代替 0.8
             int requiredVotes = (int)Math.Ceiling(activePlayerCount * Config.RequiredVotePercentage);
-            isVotePassed = info.yes_votes >= requiredVotes;
+            isVotePassed = info.yes_votes >= requiredVotes; // 洗牌：8成門檻
         }
 
         if (isVotePassed) 
@@ -351,7 +353,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
             }
             else if (_currentVoteType == VoteType.Shuffle)
             {
-                Server.PrintToChatAll($" {Prefix} 投 票 通 過「 {ChatColors.Lime}已 開 啟 隨 機 隊 伍 分 配 {ChatColors.Default}」 將 自 自動 洗 牌");
+                Server.PrintToChatAll($" {Prefix} 投 票 通 過「 {ChatColors.Lime}已 開 啟 隨 機 隊 伍 分 配 {ChatColors.Default}」 將 自 動 洗 牌");
                 
                foreach (var p in Utilities.GetPlayers().Where(p => p != null && p.IsValid && !p.IsBot && (p.TeamNum == 2 || p.TeamNum == 3)))
                 {
@@ -377,17 +379,17 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         }
         else
         {
+            // === 修正失敗時的提示文字邏輯 ===
             if (_currentVoteType == VoteType.Shuffle || _currentVoteType == VoteType.Unshuffle)
             {
                 string voteName = _currentVoteType == VoteType.Shuffle ? "洗 牌" : "取 消 洗 牌";
-                
-                // 【更新】動態計算所需的百分比，取代原本的「8成」字眼
                 string requiredPercentText = $"{Math.Round(Config.RequiredVotePercentage * 100)}%";
                 Server.PrintToChatAll($" {Prefix} {voteName} 投 票 失 敗！需 達 {ChatColors.Green}{requiredPercentText}{ChatColors.Default} 玩 家 同 意");
             }
-            else
+            else if (_currentVoteType == VoteType.MapChange)
             {
-                Server.PrintToChatAll($" {Prefix} 投 票 失 敗，將 維 持 隊 伍 不 變");
+                // 換圖失敗專用提示
+                Server.PrintToChatAll($" {Prefix} 換 圖 投 票 失 敗，將 維 持 當 前 地 圖");
             }
             
             _currentVoteType = VoteType.None; 
