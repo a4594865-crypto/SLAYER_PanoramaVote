@@ -172,7 +172,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
             if (parts.Length >= 2 && (parts[1] == "shuffle" || parts[1] == "unshuffle"))
             {
                 // 一樣轉換為 css_vote 控制台指令，讓 MatchZy 去判斷是否該攔截
-                player.ExecuteClientCommand($"css_vote {parts[1]}");
+                player.ExecuteClientCommand($"css_slayer_vote {parts[1]}");
                 return HookResult.Handled;
             }
             
