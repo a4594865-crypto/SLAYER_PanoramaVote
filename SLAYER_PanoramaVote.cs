@@ -197,7 +197,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
     }
 
     // ★ 新增：為了接住 .vote 轉換過來的 css_vote 指令
-    [ConsoleCommand("css_vote", "發起系統投票 (shuffle/unshuffle)")]
+    [ConsoleCommand("css_slayer_vote", "發起系統投票 (shuffle/unshuffle)")]
     public void OnCommandCssVote(CCSPlayerController? player, CommandInfo info) 
     {
         if (player == null || !player.IsValid) return;
