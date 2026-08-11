@@ -13,26 +13,18 @@ namespace SLAYER_PanoramaVote;
 
 #pragma warning disable CS8618
 
-// ==========================================
-// 【更新】全數值抽離至設定檔 (Config)
-// ==========================================
 public class PanoramaVoteConfig : BasePluginConfig
 {
     [JsonPropertyName("VoteDurationSeconds")]
-    public float VoteDurationSeconds { get; set; } = 60.0f; // 投票持續時間 (預設 60 秒)
-
+    public float VoteDurationSeconds { get; set; } = 60.0f; 
     [JsonPropertyName("VoteCooldownSeconds")]
-    public float VoteCooldownSeconds { get; set; } = 90.0f; // 【新增】兩次投票之間的冷卻時間 (預設 90 秒)
-
+    public float VoteCooldownSeconds { get; set; } = 90.0f; 
     [JsonPropertyName("MinPlayersRequired")]
-    public int MinPlayersRequired { get; set; } = 6; // 最少需要多少真人玩家才能發起投票 (預設 6 人)
-
+    public int MinPlayersRequired { get; set; } = 6; 
     [JsonPropertyName("RequiredVotePercentage")]
-    public float RequiredVotePercentage { get; set; } = 0.8f; // 【新增】洗牌/取消洗牌所需的同意比例 (預設 0.8 即 80%)
-
+    public float RequiredVotePercentage { get; set; } = 0.8f; 
     [JsonPropertyName("JoinMessageDelaySeconds")]
-    public float JoinMessageDelaySeconds { get; set; } = 4.0f; // 玩家進服文字延遲顯示 (預設 4 秒)
-
+    public float JoinMessageDelaySeconds { get; set; } = 4.0f; 
     [JsonPropertyName("JoinMessages")]
     public List<string> JoinMessages { get; set; } = new List<string>
     {
@@ -45,7 +37,7 @@ public class PanoramaVoteConfig : BasePluginConfig
 public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVoteConfig>
 {
     public override string ModuleName => "SLAYER_PanoramaVote";
-    public override string ModuleVersion => "2.4_UltimateVote_Config_Pro"; 
+    public override string ModuleVersion => "2.6_ServerProxy_Pro"; 
     public override string ModuleAuthor => "SLAYER / Optimized / UltimateVote";
     public override string ModuleDescription => "Panorama RTV, Shuffle & Unshuffle Vote with Config";
     
@@ -145,10 +137,13 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
             }
         }
         
+        // ★ 終極破解法：由 Server 發起內部指令，並附上玩家的 Slot 號碼
         if (text.StartsWith(".rtv"))
         {
             string[] parts = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            ExecuteRtvLogic(player, parts);
+            string args = parts.Length > 1 ? parts[1] : "";
+            
+            Server.ExecuteCommand($"css_slayer_vote_internal {player.Slot} rtv {args}");
             return HookResult.Handled; 
         }
         
@@ -165,15 +160,9 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
                 return HookResult.Handled;
             }
 
-            if (parts.Length >= 2 && parts[1] == "shuffle")
+            if (parts.Length >= 2 && (parts[1] == "shuffle" || parts[1] == "unshuffle"))
             {
-                ExecuteShuffleVoteLogic(player);
-                return HookResult.Handled;
-            }
-
-            if (parts.Length >= 2 && parts[1] == "unshuffle")
-            {
-                ExecuteUnshuffleVoteLogic(player);
+                Server.ExecuteCommand($"css_slayer_vote_internal {player.Slot} {parts[1]}");
                 return HookResult.Handled;
             }
             
@@ -182,6 +171,35 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         }
 
         return HookResult.Continue;
+    }
+
+    // ==========================================
+    // 伺服器內部接收器 (解決 ExecuteClientCommand 無效的問題)
+    // ==========================================
+    [ConsoleCommand("css_slayer_vote_internal", "Internal vote proxy")]
+    public void OnInternalVote(CCSPlayerController? caller, CommandInfo info) 
+    {
+        // 抓出是哪一個 Slot 的玩家按的
+        if (!int.TryParse(info.GetArg(1), out int slot)) return;
+        var player = Utilities.GetPlayerFromSlot(slot);
+        if (player == null || !player.IsValid) return;
+
+        string action = info.GetArg(2).ToLower();
+        
+        if (action == "rtv") 
+        {
+            string mapArg = info.GetArg(3);
+            string[] args = string.IsNullOrEmpty(mapArg) ? new[] { ".rtv" } : new[] { ".rtv", mapArg };
+            ExecuteRtvLogic(player, args);
+        }
+        else if (action == "shuffle") 
+        {
+            ExecuteShuffleVoteLogic(player);
+        }
+        else if (action == "unshuffle") 
+        {
+            ExecuteUnshuffleVoteLogic(player);
+        }
     }
 
     [ConsoleCommand("css_rtv", "發起 RTV 投票更換地圖")]
@@ -206,6 +224,10 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         if (player == null || !player.IsValid) return;
         ExecuteUnshuffleVoteLogic(player);
     }
+
+    // ==========================================
+    // 邏輯執行區
+    // ==========================================
 
     private void ExecuteRtvLogic(CCSPlayerController player, string[] args)
     {
@@ -233,7 +255,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         _currentVoteType = VoteType.MapChange; 
         voteHandler.Init(); 
 
-        // 使用 Config.VoteDurationSeconds 代替 60.0f
         voteHandler.SendYesNoVoteToAll(Config.VoteDurationSeconds, player.Slot, "#SFUI_vote_changelevel", _targetMap, VoteResultCallback, VoteHandlerCallback);
 
         _lastMapVoteTime = Server.CurrentTime; 
@@ -247,7 +268,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         _currentVoteType = VoteType.Shuffle; 
         voteHandler.Init(); 
         
-        // 使用 Config.VoteDurationSeconds 代替 60.0f
         voteHandler.SendYesNoVoteToAll(Config.VoteDurationSeconds, player.Slot, "#SFUI_vote_scramble_teams", "", VoteResultCallback, VoteHandlerCallback);
 
         _lastShuffleVoteTime = Server.CurrentTime; 
@@ -261,7 +281,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         _currentVoteType = VoteType.Unshuffle; 
         voteHandler.Init(); 
         
-        // 使用 Config.VoteDurationSeconds 代替 60.0f
         voteHandler.SendYesNoVoteToAll(Config.VoteDurationSeconds, player.Slot, "#SFUI_Scoreboard_Undo", "", VoteResultCallback, VoteHandlerCallback);
 
         _lastShuffleVoteTime = Server.CurrentTime; 
@@ -307,7 +326,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         double targetLastTime = (requestedType == VoteType.MapChange) ? _lastMapVoteTime : _lastShuffleVoteTime;
         string voteTypeName = (requestedType == VoteType.MapChange) ? "換 圖" : "隊 伍 洗 牌";
 
-        // 【更新】使用 Config.VoteCooldownSeconds
         if (currentTime - targetLastTime < Config.VoteCooldownSeconds)
         {
             int timeLeft = (int)Math.Ceiling(Config.VoteCooldownSeconds - (currentTime - targetLastTime));
@@ -318,9 +336,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         return true;
     }
 
-    // ==========================================
-    // 投票結果處理中樞 (更新版：修正換圖失敗的語病)
-    // ==========================================
     private bool VoteResultCallback(YesNoVoteInfo info)
     {
         int activePlayerCount = Utilities.GetPlayers().Count(p => p != null && p.IsValid && !p.IsBot && (p.TeamNum == 2 || p.TeamNum == 3));
@@ -328,12 +343,12 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
 
         if (_currentVoteType == VoteType.MapChange)
         {
-            isVotePassed = info.yes_votes > info.no_votes; // 換圖：多數決
+            isVotePassed = info.yes_votes > info.no_votes;
         }
         else if (_currentVoteType == VoteType.Shuffle || _currentVoteType == VoteType.Unshuffle)
         {
             int requiredVotes = (int)Math.Ceiling(activePlayerCount * Config.RequiredVotePercentage);
-            isVotePassed = info.yes_votes >= requiredVotes; // 洗牌：8成門檻
+            isVotePassed = info.yes_votes >= requiredVotes;
         }
 
         if (isVotePassed) 
@@ -379,7 +394,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         }
         else
         {
-            // === 修正失敗時的提示文字邏輯 ===
             if (_currentVoteType == VoteType.Shuffle || _currentVoteType == VoteType.Unshuffle)
             {
                 string voteName = _currentVoteType == VoteType.Shuffle ? "洗 牌" : "取 消 洗 牌";
@@ -388,7 +402,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
             }
             else if (_currentVoteType == VoteType.MapChange)
             {
-                // 換圖失敗專用提示
                 Server.PrintToChatAll($" {Prefix} 換 圖 投 票 失 敗，將 維 持 當 前 地 圖");
             }
             
