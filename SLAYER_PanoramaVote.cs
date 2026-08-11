@@ -45,7 +45,7 @@ public class PanoramaVoteConfig : BasePluginConfig
 public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVoteConfig>
 {
     public override string ModuleName => "SLAYER_PanoramaVote";
-    public override string ModuleVersion => "2.5_MatchZy_Sync_Pro"; 
+    public override string ModuleVersion => "2.4_UltimateVote_Config_Pro"; 
     public override string ModuleAuthor => "SLAYER / Optimized / UltimateVote";
     public override string ModuleDescription => "Panorama RTV, Shuffle & Unshuffle Vote with Config";
     
@@ -145,14 +145,10 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
             }
         }
         
-        // ★ 核心修改點：將聊天室指令轉換為玩家執行控制台指令 (ExecuteClientCommand)
-        // 這樣就能無縫觸發 MatchZy.cs 裡的 BlockVoteInCriticalPhases 防禦機制！
         if (text.StartsWith(".rtv"))
         {
             string[] parts = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            string args = parts.Length > 1 ? parts[1] : "";
-            
-            player.ExecuteClientCommand($"css_rtv {args}");
+            ExecuteRtvLogic(player, parts);
             return HookResult.Handled; 
         }
         
@@ -169,10 +165,15 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
                 return HookResult.Handled;
             }
 
-            if (parts.Length >= 2 && (parts[1] == "shuffle" || parts[1] == "unshuffle"))
+            if (parts.Length >= 2 && parts[1] == "shuffle")
             {
-                // 一樣轉換為 css_vote 控制台指令，讓 MatchZy 去判斷是否該攔截
-                player.ExecuteClientCommand($"css_slayer_vote {parts[1]}");
+                ExecuteShuffleVoteLogic(player);
+                return HookResult.Handled;
+            }
+
+            if (parts.Length >= 2 && parts[1] == "unshuffle")
+            {
+                ExecuteUnshuffleVoteLogic(player);
                 return HookResult.Handled;
             }
             
@@ -183,10 +184,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         return HookResult.Continue;
     }
 
-    // ==========================================
-    // 控制台指令區
-    // ==========================================
-
     [ConsoleCommand("css_rtv", "發起 RTV 投票更換地圖")]
     public void OnCommandVote(CCSPlayerController? player, CommandInfo info) 
     {
@@ -194,23 +191,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         string[] args = new string[info.ArgCount];
         for (int i = 0; i < info.ArgCount; i++) args[i] = info.GetArg(i);
         ExecuteRtvLogic(player, args);
-    }
-
-    // ★ 新增：為了接住 .vote 轉換過來的 css_vote 指令
-    [ConsoleCommand("css_slayer_vote", "發起系統投票 (shuffle/unshuffle)")]
-    public void OnCommandCssVote(CCSPlayerController? player, CommandInfo info) 
-    {
-        if (player == null || !player.IsValid) return;
-        
-        string arg = info.GetArg(1).ToLower();
-        if (arg == "shuffle") 
-        {
-            ExecuteShuffleVoteLogic(player);
-        }
-        else if (arg == "unshuffle") 
-        {
-            ExecuteUnshuffleVoteLogic(player);
-        }
     }
 
     [ConsoleCommand("css_vshuffle", "發起隨機分隊投票")]
@@ -226,10 +206,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         if (player == null || !player.IsValid) return;
         ExecuteUnshuffleVoteLogic(player);
     }
-
-    // ==========================================
-    // 邏輯執行區 (完全不變，維持原本正常的投票機制)
-    // ==========================================
 
     private void ExecuteRtvLogic(CCSPlayerController player, string[] args)
     {
@@ -257,6 +233,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         _currentVoteType = VoteType.MapChange; 
         voteHandler.Init(); 
 
+        // 使用 Config.VoteDurationSeconds 代替 60.0f
         voteHandler.SendYesNoVoteToAll(Config.VoteDurationSeconds, player.Slot, "#SFUI_vote_changelevel", _targetMap, VoteResultCallback, VoteHandlerCallback);
 
         _lastMapVoteTime = Server.CurrentTime; 
@@ -270,6 +247,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         _currentVoteType = VoteType.Shuffle; 
         voteHandler.Init(); 
         
+        // 使用 Config.VoteDurationSeconds 代替 60.0f
         voteHandler.SendYesNoVoteToAll(Config.VoteDurationSeconds, player.Slot, "#SFUI_vote_scramble_teams", "", VoteResultCallback, VoteHandlerCallback);
 
         _lastShuffleVoteTime = Server.CurrentTime; 
@@ -283,6 +261,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         _currentVoteType = VoteType.Unshuffle; 
         voteHandler.Init(); 
         
+        // 使用 Config.VoteDurationSeconds 代替 60.0f
         voteHandler.SendYesNoVoteToAll(Config.VoteDurationSeconds, player.Slot, "#SFUI_Scoreboard_Undo", "", VoteResultCallback, VoteHandlerCallback);
 
         _lastShuffleVoteTime = Server.CurrentTime; 
@@ -328,6 +307,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         double targetLastTime = (requestedType == VoteType.MapChange) ? _lastMapVoteTime : _lastShuffleVoteTime;
         string voteTypeName = (requestedType == VoteType.MapChange) ? "換 圖" : "隊 伍 洗 牌";
 
+        // 【更新】使用 Config.VoteCooldownSeconds
         if (currentTime - targetLastTime < Config.VoteCooldownSeconds)
         {
             int timeLeft = (int)Math.Ceiling(Config.VoteCooldownSeconds - (currentTime - targetLastTime));
@@ -338,6 +318,9 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         return true;
     }
 
+    // ==========================================
+    // 投票結果處理中樞 (更新版：修正換圖失敗的語病)
+    // ==========================================
     private bool VoteResultCallback(YesNoVoteInfo info)
     {
         int activePlayerCount = Utilities.GetPlayers().Count(p => p != null && p.IsValid && !p.IsBot && (p.TeamNum == 2 || p.TeamNum == 3));
@@ -345,12 +328,12 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
 
         if (_currentVoteType == VoteType.MapChange)
         {
-            isVotePassed = info.yes_votes > info.no_votes;
+            isVotePassed = info.yes_votes > info.no_votes; // 換圖：多數決
         }
         else if (_currentVoteType == VoteType.Shuffle || _currentVoteType == VoteType.Unshuffle)
         {
             int requiredVotes = (int)Math.Ceiling(activePlayerCount * Config.RequiredVotePercentage);
-            isVotePassed = info.yes_votes >= requiredVotes;
+            isVotePassed = info.yes_votes >= requiredVotes; // 洗牌：8成門檻
         }
 
         if (isVotePassed) 
@@ -396,6 +379,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         }
         else
         {
+            // === 修正失敗時的提示文字邏輯 ===
             if (_currentVoteType == VoteType.Shuffle || _currentVoteType == VoteType.Unshuffle)
             {
                 string voteName = _currentVoteType == VoteType.Shuffle ? "洗 牌" : "取 消 洗 牌";
@@ -404,6 +388,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
             }
             else if (_currentVoteType == VoteType.MapChange)
             {
+                // 換圖失敗專用提示
                 Server.PrintToChatAll($" {Prefix} 換 圖 投 票 失 敗，將 維 持 當 前 地 圖");
             }
             
