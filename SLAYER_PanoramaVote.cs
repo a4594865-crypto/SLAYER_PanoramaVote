@@ -5,9 +5,10 @@ using CounterStrikeSharp.API.Modules.Utils;
 using CounterStrikeSharp.API.Modules.Commands;
 using PanoramaVote; 
 using System;
-using System.Linq;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+
+// 【已移除 using System.Linq;】 貫徹 0 記憶體垃圾極致版
 
 namespace SLAYER_PanoramaVote;
 
@@ -37,9 +38,9 @@ public class PanoramaVoteConfig : BasePluginConfig
 public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVoteConfig>
 {
     public override string ModuleName => "SLAYER_PanoramaVote";
-    public override string ModuleVersion => "2.6_ServerProxy_Pro"; 
+    public override string ModuleVersion => "2.7_ZeroGC_Pro"; 
     public override string ModuleAuthor => "SLAYER / Optimized / UltimateVote";
-    public override string ModuleDescription => "Panorama RTV, Shuffle & Unshuffle Vote with Config";
+    public override string ModuleDescription => "Panorama RTV, Shuffle Vote with Zero LINQ Garbage";
     
     public PanoramaVoteConfig Config { get; set; }
     public CPanoramaVote voteHandler; 
@@ -93,7 +94,13 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
 
         RegisterEventHandler<EventRoundStart>((@event, info) =>
         {
-            var gameRules = Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules").FirstOrDefault();
+            // 替換 LINQ FirstOrDefault，改用 foreach
+            CCSGameRulesProxy? gameRules = null;
+            foreach (var rule in Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules"))
+            {
+                gameRules = rule;
+                break;
+            }
             
             if (gameRules != null && gameRules.GameRules != null && !gameRules.GameRules.WarmupPeriod)
             {
@@ -137,7 +144,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
             }
         }
         
-        // ★ 終極破解法：由 Server 發起內部指令，並附上玩家的 Slot 號碼
         if (text.StartsWith(".rtv"))
         {
             string[] parts = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
@@ -173,13 +179,9 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         return HookResult.Continue;
     }
 
-    // ==========================================
-    // 伺服器內部接收器 (解決 ExecuteClientCommand 無效的問題)
-    // ==========================================
     [ConsoleCommand("css_slayer_vote_internal", "Internal vote proxy")]
     public void OnInternalVote(CCSPlayerController? caller, CommandInfo info) 
     {
-        // 抓出是哪一個 Slot 的玩家按的
         if (!int.TryParse(info.GetArg(1), out int slot)) return;
         var player = Utilities.GetPlayerFromSlot(slot);
         if (player == null || !player.IsValid) return;
@@ -225,10 +227,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         ExecuteUnshuffleVoteLogic(player);
     }
 
-    // ==========================================
-    // 邏輯執行區
-    // ==========================================
-
     private void ExecuteRtvLogic(CCSPlayerController player, string[] args)
     {
         if (args.Length < 2)
@@ -241,8 +239,18 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
 
         if (!PassCommonVoteChecks(player, VoteType.MapChange)) return;
 
-        string inputMap = args[1].Trim().ToLower();
-        string? matchedMap = _allowedMaps.FirstOrDefault(m => m.ToLower() == inputMap);
+        string inputMap = args[1].Trim();
+        string? matchedMap = null;
+        
+        // 替換 LINQ FirstOrDefault，改用高效能 foreach
+        foreach (var m in _allowedMaps)
+        {
+            if (m.Equals(inputMap, StringComparison.OrdinalIgnoreCase))
+            {
+                matchedMap = m;
+                break;
+            }
+        }
 
         if (matchedMap == null)
         {
@@ -307,14 +315,29 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
             return false;
         }
 
-        var gameRules = Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules").FirstOrDefault();
+        // 替換 LINQ
+        CCSGameRulesProxy? gameRules = null;
+        foreach (var rule in Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules"))
+        {
+            gameRules = rule;
+            break;
+        }
+        
         if (gameRules == null || gameRules.GameRules == null || !gameRules.GameRules.WarmupPeriod)
         {
             player.PrintToChat($" {Prefix} 投 票 系 統 只 能 在{ChatColors.Yellow} 暖 場 時 間 {ChatColors.White}內 使 用");
             return false;
         }
 
-        int activePlayerCount = Utilities.GetPlayers().Count(p => p != null && p.IsValid && !p.IsBot && (p.TeamNum == 2 || p.TeamNum == 3));
+        // 替換 LINQ Count，改用 foreach 手動計算
+        int activePlayerCount = 0;
+        foreach (var p in Utilities.GetPlayers())
+        {
+            if (p != null && p.IsValid && !p.IsBot && (p.TeamNum == 2 || p.TeamNum == 3))
+            {
+                activePlayerCount++;
+            }
+        }
 
         if (activePlayerCount < Config.MinPlayersRequired)
         {
@@ -338,7 +361,16 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
 
     private bool VoteResultCallback(YesNoVoteInfo info)
     {
-        int activePlayerCount = Utilities.GetPlayers().Count(p => p != null && p.IsValid && !p.IsBot && (p.TeamNum == 2 || p.TeamNum == 3));
+        // 替換 LINQ Count
+        int activePlayerCount = 0;
+        foreach (var p in Utilities.GetPlayers())
+        {
+            if (p != null && p.IsValid && !p.IsBot && (p.TeamNum == 2 || p.TeamNum == 3))
+            {
+                activePlayerCount++;
+            }
+        }
+        
         bool isVotePassed = false;
 
         if (_currentVoteType == VoteType.MapChange)
@@ -358,9 +390,13 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
                 _isMapChanging = true; 
                 Server.PrintToChatAll($" {Prefix} 投 票 通 過！ {ChatColors.Green}5 秒 {ChatColors.White}後 更 換 地 圖 至 {ChatColors.Green}{_targetMap}");
                 
-                foreach (var p in Utilities.GetPlayers().Where(p => p != null && p.IsValid && !p.IsBot))
+                // 替換 LINQ Where
+                foreach (var p in Utilities.GetPlayers())
                 {
-                    p.PrintToCenter($"投 票 通 過：5 秒 後 更 換 地 圖 {_targetMap}");
+                    if (p != null && p.IsValid && !p.IsBot)
+                    {
+                        p.PrintToCenter($"投 票 通 過：5 秒 後 更 換 地 圖 {_targetMap}");
+                    }
                 }
                 
                 string mapCmd = _targetMap;
@@ -370,9 +406,13 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
             {
                 Server.PrintToChatAll($" {Prefix} 投 票 通 過「 {ChatColors.Lime}已 開 啟 隨 機 隊 伍 分 配 {ChatColors.Default}」 將 自 動 洗 牌");
                 
-               foreach (var p in Utilities.GetPlayers().Where(p => p != null && p.IsValid && !p.IsBot && (p.TeamNum == 2 || p.TeamNum == 3)))
+                // 替換 LINQ Where
+                foreach (var p in Utilities.GetPlayers())
                 {
-                    p.PrintToCenter("投 票 通 過：已 開 啟 隨 機 隊 伍 分 配");
+                    if (p != null && p.IsValid && !p.IsBot && (p.TeamNum == 2 || p.TeamNum == 3))
+                    {
+                        p.PrintToCenter("投 票 通 過：已 開 啟 隨 機 隊 伍 分 配");
+                    }
                 }
                 
                 Server.ExecuteCommand("css_shuffle");
@@ -381,9 +421,13 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
             {
                 Server.PrintToChatAll($" {Prefix} 投 票 通 過「 {ChatColors.LightRed}已 取 消 隨 機 隊 伍 分 配 {ChatColors.Default}」 維 持 隊 伍 不 變");
                 
-                foreach (var p in Utilities.GetPlayers().Where(p => p != null && p.IsValid && !p.IsBot && (p.TeamNum == 2 || p.TeamNum == 3)))
+                // 替換 LINQ Where
+                foreach (var p in Utilities.GetPlayers())
                 {
-                    p.PrintToCenter("投 票 通 過：已 取 消 隨 機 隊 伍 分 配");
+                    if (p != null && p.IsValid && !p.IsBot && (p.TeamNum == 2 || p.TeamNum == 3))
+                    {
+                        p.PrintToCenter("投 票 通 過：已 取 消 隨 機 隊 伍 分 配");
+                    }
                 }
                 
                 Server.ExecuteCommand("css_unshuffle");
