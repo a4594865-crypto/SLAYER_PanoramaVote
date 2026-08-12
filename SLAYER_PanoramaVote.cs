@@ -107,7 +107,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
                 if (_currentVoteType != VoteType.None)
                 {
                     voteHandler.CancelVote();
-                    Server.PrintToChatAll($" {Prefix} 比賽已正式開始，尚未完成的投票已被系統強制取消");
+                    Server.PrintToChatAll($" {Prefix} 比賽已開始，未完成的投票已被強制取消");
                     _currentVoteType = VoteType.None;
                 }
             }
@@ -140,6 +140,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
             if (_currentVoteType != VoteType.None)
             {
                 player.PrintToChat($" {Prefix} 投票進行中 {ChatColors.Green} [ F 1 是 ]{ChatColors.White} 或 {ChatColors.DarkRed}[ F 2 否 ] {ChatColors.White}投票結束再準備");
+                player.PrintToCenter("請 投 票 結 束，再 輸 入 !R 準 備");
                 return HookResult.Stop; 
             }
         }
