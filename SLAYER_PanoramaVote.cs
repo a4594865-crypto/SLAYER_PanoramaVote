@@ -326,6 +326,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         if (gameRules == null || gameRules.GameRules == null || !gameRules.GameRules.WarmupPeriod)
         {
             player.PrintToChat($" {Prefix} 投 票 系 統 只 能 在{ChatColors.Yellow} 暖 場 時 間 {ChatColors.White}內 使 用");
+            player.PrintToCenter("比 賽 進 行 中 ， 禁 止 發 起 投 票");
             return false;
         }
 
@@ -400,11 +401,21 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
                 }
                 
                 string mapCmd = _targetMap;
-                AddTimer(7.0f, () => { Server.ExecuteCommand($"changelevel {mapCmd}"); });
+                AddTimer(7.0f, () => { 
+                    // 完美防禦：換圖前一刻再次確認是否為熱身狀態，防止「定時炸彈」摧毀正賽
+                    CCSGameRulesProxy? rules = null;
+                    foreach (var r in Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")) { rules = r; break; }
+                    
+                    if (rules != null && rules.GameRules != null && rules.GameRules.WarmupPeriod) {
+                        Server.ExecuteCommand($"changelevel {mapCmd}"); 
+                    } else {
+                        Server.PrintToChatAll($" {Prefix} {ChatColors.Red}換 圖 終 止！{ChatColors.White}比 賽 已 經 開 始。");
+                    }
+                });
             }
             else if (_currentVoteType == VoteType.Shuffle)
             {
-                Server.PrintToChatAll($" {Prefix} 投 票 通 過「 {ChatColors.Lime}已 開 啟 隨 機 隊 伍 分 配 {ChatColors.Default}」 將 自 動 洗 牌");
+                Server.PrintToChatAll($" {Prefix} 投 票 通 過「 {ChatColors.Lime}已 開 啟 隨 機 隊 伍 分 配 {ChatColors.Default}」 將 自 自 動 洗 牌");
                 
                 // 替換 LINQ Where
                 foreach (var p in Utilities.GetPlayers())
