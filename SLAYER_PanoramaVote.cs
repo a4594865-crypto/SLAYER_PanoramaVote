@@ -135,16 +135,23 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         
         string text = info.GetArg(1).Trim('"').Trim().ToLower();
 
-        if (text == ".r" || text == ".ready" || text == "!r" || text == "!ready" || text == ".unready" || text == "!unready")
+       if (text == ".r" || text == ".ready" || text == "!r" || text == "!ready" || text == ".unready" || text == "!unready")
         {
-            if (_currentVoteType != VoteType.None)
+            if (_currentVoteType != VoteType.None || _isMapChanging)
             {
-                player.PrintToChat($" {Prefix} 投票進行中 {ChatColors.Green} [ F 1 是 ]{ChatColors.White} 或 {ChatColors.DarkRed}[ F 2 否 ] {ChatColors.White}投票結束再準備");
-                player.PrintToCenter("請 投 票 結 束，再 輸 入 .R 準 備");
+                if (_isMapChanging)
+                {
+                    player.PrintToChat($" {Prefix} {ChatColors.Red}地 圖 即 將 更 換，禁 止 輸 入 準 備 指 令{ChatColors.White}");
+                    player.PrintToCenter("地 圖 即 將 更 換 ， 禁 止 輸 入 .R");
+                }
+                else
+                {
+                    player.PrintToChat($" {Prefix} 投票進行中 {ChatColors.Green} [ F 1 是 ]{ChatColors.White} 或 {ChatColors.DarkRed}[ F 2 否 ] {ChatColors.White}投票結束再準備");
+                    player.PrintToCenter("請 投 票 結 束 ， 再 輸 入 .R 準 備");
+                }
                 return HookResult.Stop; 
             }
         }
-        
         if (text.StartsWith(".rtv"))
         {
             string[] parts = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
@@ -300,19 +307,19 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
     {
         if (player.TeamNum != (byte)CsTeam.Terrorist && player.TeamNum != (byte)CsTeam.CounterTerrorist)
         {
-            player.PrintToChat($" {Prefix} {ChatColors.Red}只 有 在 CT 或 T 的 玩 家 才 能 發 起 投 票");
+            player.PrintToChat($" {Prefix} {ChatColors.Yellow}只 有 在 CT 或 T 的 玩 家 才 能 發 起 投 票");
             return false;
         }
 
         if (_isMapChanging)
         {
-            player.PrintToChat($" {Prefix} {ChatColors.Red}地 圖 即 將 更 換，請 稍 候");
+            player.PrintToChat($" {Prefix} {ChatColors.Yellow}地 圖 即 將 更 換，請 稍 候");
             return false;
         }
 
         if (_currentVoteType != VoteType.None)
         {
-            player.PrintToChat($" {Prefix} {ChatColors.Red}當 前 已 有 投 票 正 在 進 行 中，請 稍 後 再 試");
+            player.PrintToChat($" {Prefix} {ChatColors.Yellow}當 前 已 有 投 票 正 在 進 行 中，請 稍 後 再 試");
             return false;
         }
 
@@ -410,7 +417,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
                     if (rules != null && rules.GameRules != null && rules.GameRules.WarmupPeriod) {
                         Server.ExecuteCommand($"changelevel {mapCmd}"); 
                     } else {
-                        Server.PrintToChatAll($" {Prefix} {ChatColors.Red}換 圖 終 止！{ChatColors.White}比 賽 已 經 開 始。");
+                        Server.PrintToChatAll($" {Prefix} {ChatColors.Yellow}換 圖 終 止！{ChatColors.White}比 賽 已 經 開 始。");
                     }
                 });
             }
@@ -458,7 +465,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
             }
             else if (_currentVoteType == VoteType.MapChange)
             {
-                Server.PrintToChatAll($" {Prefix} 換 圖 投 票 失 敗，將 維 持 當 前 地 圖");
+                Server.PrintToChatAll($" {Prefix} {ChatColors.Lime}換 圖 投 票{ChatColors.White} 失 敗，將 維 持 當 前 地 圖");
             }
             
             _currentVoteType = VoteType.None; 
