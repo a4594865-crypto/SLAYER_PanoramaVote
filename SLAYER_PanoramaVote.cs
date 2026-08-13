@@ -107,17 +107,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
                 if (_currentVoteType != VoteType.None)
                 {
                     voteHandler.CancelVote();
-                    Server.PrintToChatAll($" {Prefix} 比賽已正式開始，已被系統強制取消");
-                    
-                    // 加上畫面中央醒目提示
-                    foreach (var p in Utilities.GetPlayers())
-                    {
-                        if (p != null && p.IsValid && !p.IsBot)
-                        {
-                            p.PrintToCenter("比賽已開始，投票已被強制取消");
-                        }
-                    }
-
+                    Server.PrintToChatAll($" {Prefix} 比賽已正式開始，投票已被{ChatColors.Orange}系統強制{ChatColors.White}取消");
                     _currentVoteType = VoteType.None;
                 }
             }
