@@ -135,7 +135,8 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         
         string text = info.GetArg(1).Trim('"').Trim().ToLower();
 
-       if (text == ".r" || text == ".ready" || text == "!r" || text == "!ready" || text == ".unready" || text == "!unready")
+      // 檢查準備指令
+        if (text == ".r" || text == ".ready" || text == "!r" || text == "!ready" || text == ".unready" || text == "!unready")
         {
             if (_currentVoteType != VoteType.None || _isMapChanging)
             {
@@ -150,6 +151,17 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
                     player.PrintToCenter("請 投 票 結 束 ， 再 輸 入 .R 準 備");
                 }
                 return HookResult.Stop; 
+            }
+        }
+
+        // 【新增防護】：如果地圖正在更換中，全面禁止輸入 .vote 或 .rtv 發起新投票
+        if (text == ".rtv" || text == "!rtv" || text == ".vote" || text == "!vote")
+        {
+            if (_isMapChanging)
+            {
+                player.PrintToChat($" {Prefix} {ChatColors.Red}地 圖 即 將 更 換，無 法 發 起 投 票{ChatColors.White}");
+                player.PrintToCenter("地 圖 即 將 更 換 ， 無 法 發 起 投 票");
+                return HookResult.Stop;
             }
         }
         if (text.StartsWith(".rtv"))
