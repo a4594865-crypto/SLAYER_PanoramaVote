@@ -478,7 +478,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
             case YesNoVoteAction.VoteAction_End:
                 if ((YesNoVoteEndReason)param1 == YesNoVoteEndReason.VoteEnd_Cancelled)
                 {
-                    Server.PrintToChatAll($" {Prefix} {ChatColors.Red}投 票 已 被 系 統 取 消。");
+                    Server.PrintToChatAll($" {Prefix} {ChatColors.Orange}投 票 已 被 系 統 取 消");
                     _currentVoteType = VoteType.None; 
                 }
                 break;
