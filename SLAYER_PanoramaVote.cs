@@ -36,9 +36,9 @@ public class PanoramaVoteConfig : BasePluginConfig
 public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVoteConfig>
 {
     public override string ModuleName => "SLAYER_PanoramaVote";
-    public override string ModuleVersion => "2.8_Ultimate_ZeroGC"; // 升級為究極 0 GC 版
+    public override string ModuleVersion => "2.9_DotOnly_ZeroGC"; // 升級為純點號觸發 + 0 GC 版
     public override string ModuleAuthor => "SLAYER / Optimized / UltimateVote";
-    public override string ModuleDescription => "Panorama RTV, Shuffle Vote with True Zero Allocation";
+    public override string ModuleDescription => "Panorama RTV, Shuffle Vote with True Zero Allocation (Dot Only)";
     
     public PanoramaVoteConfig Config { get; set; }
     public CPanoramaVote voteHandler; 
@@ -132,7 +132,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         ReadOnlySpan<char> textSpan = info.GetArg(1).AsSpan().Trim('"').Trim();
         if (textSpan.IsEmpty) return HookResult.Continue;
 
-        // 檢查準備指令 (零分配比對)
+        // 檢查準備指令 (零分配比對，僅限點號 .)
         if (IsReadyCommand(textSpan))
         {
             if (_currentVoteType != VoteType.None || _isMapChanging)
@@ -151,7 +151,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
             }
         }
 
-        // 檢查發起新投票指令 (零分配比對)
+        // 檢查發起新投票指令 (零分配比對，僅限點號 .)
         if (IsVoteStartCommand(textSpan))
         {
             if (_isMapChanging)
@@ -200,22 +200,19 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         return HookResult.Continue;
     }
 
+    // 【修改】：將所有驚嘆號 (!) 的指令拔除，強制僅支援點號 (.)
     private bool IsReadyCommand(ReadOnlySpan<char> text)
     {
         return text.Equals(".r", StringComparison.OrdinalIgnoreCase) || 
                text.Equals(".ready", StringComparison.OrdinalIgnoreCase) || 
-               text.Equals("!r", StringComparison.OrdinalIgnoreCase) || 
-               text.Equals("!ready", StringComparison.OrdinalIgnoreCase) || 
-               text.Equals(".unready", StringComparison.OrdinalIgnoreCase) || 
-               text.Equals("!unready", StringComparison.OrdinalIgnoreCase);
+               text.Equals(".unready", StringComparison.OrdinalIgnoreCase);
     }
 
+    // 【修改】：將所有驚嘆號 (!) 的指令拔除，強制僅支援點號 (.)
     private bool IsVoteStartCommand(ReadOnlySpan<char> text)
     {
         return text.Equals(".rtv", StringComparison.OrdinalIgnoreCase) || 
-               text.Equals("!rtv", StringComparison.OrdinalIgnoreCase) || 
-               text.Equals(".vote", StringComparison.OrdinalIgnoreCase) || 
-               text.Equals("!vote", StringComparison.OrdinalIgnoreCase);
+               text.Equals(".vote", StringComparison.OrdinalIgnoreCase);
     }
 
     [ConsoleCommand("css_slayer_vote_internal", "Internal vote proxy")]
