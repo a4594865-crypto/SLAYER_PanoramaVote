@@ -7,7 +7,7 @@ using PanoramaVote;
 using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
-using System.Collections.Frozen; // 【新增】引入凍結集合
+using System.Collections.Frozen; 
 
 namespace SLAYER_PanoramaVote;
 
@@ -36,9 +36,9 @@ public class PanoramaVoteConfig : BasePluginConfig
 public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVoteConfig>
 {
     public override string ModuleName => "SLAYER_PanoramaVote";
-    public override string ModuleVersion => "2.9_DotOnly_ZeroGC"; // 升級為純點號觸發 + 0 GC 版
+    public override string ModuleVersion => "3.0_StrictDot_ZeroGC"; 
     public override string ModuleAuthor => "SLAYER / Optimized / UltimateVote";
-    public override string ModuleDescription => "Panorama RTV, Shuffle Vote with True Zero Allocation (Dot Only)";
+    public override string ModuleDescription => "Panorama RTV, Shuffle Vote with True Zero Allocation (Strict Dot Only)";
     
     public PanoramaVoteConfig Config { get; set; }
     public CPanoramaVote voteHandler; 
@@ -54,12 +54,10 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
     
     private bool _isMapChanging = false;
 
-    // 【效能修正】：轉換為 FrozenSet 達成 O(1) 極速地圖比對
     private static readonly FrozenSet<string> _allowedMaps = new[] { 
         "de_mirage", "de_inferno", "de_dust2", "de_nuke", "de_anubis", "de_ancient", "de_cache" 
     }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
-    // 【效能修正】：新增 GameRules 快取，消滅實體搜尋浪費
     private CCSGameRules? _cachedGameRules = null;
 
     public void OnConfigParsed(PanoramaVoteConfig config)
@@ -110,7 +108,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
 
         RegisterListener<Listeners.OnMapStart>(mapName => 
         {
-            _cachedGameRules = null; // 換地圖時清空快取
+            _cachedGameRules = null; 
             _isMapChanging = false;
             _currentVoteType = VoteType.None;
             _lastMapVoteTime = -9999.0;      
@@ -128,18 +126,16 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
     {
         if (player is not { IsValid: true }) return HookResult.Continue;
         
-        // 【核心效能修正】：改用 ReadOnlySpan 進行零垃圾 (0 GC) 切片與比對，拔除 .ToLower() 與 .Split()
         ReadOnlySpan<char> textSpan = info.GetArg(1).AsSpan().Trim('"').Trim();
         if (textSpan.IsEmpty) return HookResult.Continue;
 
-        // 檢查準備指令 (零分配比對，僅限點號 .)
         if (IsReadyCommand(textSpan))
         {
             if (_currentVoteType != VoteType.None || _isMapChanging)
             {
                 if (_isMapChanging)
                 {
-                    player.PrintToChat($" {Prefix} {ChatColors.Red}地 圖 即 將 更 換，禁 止 輸 入 準 備 指 令{ChatColors.White}");
+                    player.PrintToChat($" {Prefix} {ChatColors.Red}地 圖 即 將 更 換，禁 止 輸 入 準 備 指令{ChatColors.White}");
                     player.PrintToCenter("地 圖 即 將 更 換 ， 禁 止 輸 入 .R");
                 }
                 else
@@ -151,7 +147,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
             }
         }
 
-        // 檢查發起新投票指令 (零分配比對，僅限點號 .)
         if (IsVoteStartCommand(textSpan))
         {
             if (_isMapChanging)
@@ -162,7 +157,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
             }
         }
 
-        // 處理 .rtv 帶參數指令 (完全無 Split 陣列分配)
         if (textSpan.StartsWith(".rtv", StringComparison.OrdinalIgnoreCase))
         {
             int spaceIndex = textSpan.IndexOf(' ');
@@ -172,12 +166,11 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
             return HookResult.Handled; 
         }
         
-        // 處理 .vote 帶參數指令 (完全無 Split 陣列分配)
         if (textSpan.StartsWith(".vote", StringComparison.OrdinalIgnoreCase))
         {
             int spaceIndex = textSpan.IndexOf(' ');
             
-            if (spaceIndex == -1) // 沒有帶參數
+            if (spaceIndex == -1) 
             {
                 player.PrintToChat($" {Prefix} 投 票 系 統 說 明 {ChatColors.Silver}[ {ChatColors.Green}限 熱 身 階 段 使 用 {ChatColors.Silver}]{ChatColors.White}");
                 player.PrintToChat($" {Prefix} 發 起 投 票 換 圖：請 輸 入 {ChatColors.Yellow}.rtv 地圖名稱{ChatColors.White}");
@@ -200,7 +193,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         return HookResult.Continue;
     }
 
-    // 【修改】：將所有驚嘆號 (!) 的指令拔除，強制僅支援點號 (.)
     private bool IsReadyCommand(ReadOnlySpan<char> text)
     {
         return text.Equals(".r", StringComparison.OrdinalIgnoreCase) || 
@@ -208,7 +200,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
                text.Equals(".unready", StringComparison.OrdinalIgnoreCase);
     }
 
-    // 【修改】：將所有驚嘆號 (!) 的指令拔除，強制僅支援點號 (.)
     private bool IsVoteStartCommand(ReadOnlySpan<char> text)
     {
         return text.Equals(".rtv", StringComparison.OrdinalIgnoreCase) || 
@@ -240,7 +231,8 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         }
     }
 
-    [ConsoleCommand("css_rtv", "發起 RTV 投票更換地圖")]
+    // 【核心修改】：從根源上摧毀 css_rtv 生成的 !rtv 捷徑
+    [ConsoleCommand("css_slayer_rtv", "發起 RTV 投票更換地圖 (內部指令)")]
     public void OnCommandVote(CCSPlayerController? player, CommandInfo info) 
     {
         if (player is not { IsValid: true }) return;
@@ -249,14 +241,16 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         ExecuteRtvLogic(player, args);
     }
 
-    [ConsoleCommand("css_vshuffle", "發起隨機分隊投票")]
+    // 【核心修改】：從根源上摧毀 css_vshuffle 生成的 !vshuffle 捷徑
+    [ConsoleCommand("css_slayer_vshuffle", "發起隨機分隊投票 (內部指令)")]
     public void OnCommandShuffleVote(CCSPlayerController? player, CommandInfo info) 
     {
         if (player is not { IsValid: true }) return;
         ExecuteShuffleVoteLogic(player);
     }
 
-    [ConsoleCommand("css_vunshuffle", "發起取消隨機分隊投票")]
+    // 【核心修改】：從根源上摧毀 css_vunshuffle 生成的 !vunshuffle 捷徑
+    [ConsoleCommand("css_slayer_vunshuffle", "發起取消隨機分隊投票 (內部指令)")]
     public void OnCommandUnshuffleVote(CCSPlayerController? player, CommandInfo info) 
     {
         if (player is not { IsValid: true }) return;
@@ -277,7 +271,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
 
         string inputMap = args[1].Trim();
         
-        // 【效能修正】：使用 FrozenSet 達到 O(1) 零延遲地圖確認
         if (!_allowedMaps.TryGetValue(inputMap, out string? matchedMap))
         {
             player.PrintToChat($" {Prefix} 伺 服 器 不 支 援 地 圖 [{args[1]}] ！");
@@ -401,7 +394,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
                 
                 string mapCmd = _targetMap;
                 AddTimer(7.0f, () => { 
-                    // 【效能修正】：直接呼叫快取判斷，不需在定時器觸發時重新搜尋實體
                     if (GetGameRules() is { WarmupPeriod: true }) {
                         Server.ExecuteCommand($"changelevel {mapCmd}"); 
                     } else {
@@ -478,8 +470,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         } 
     } 
 
-    #region Helpers (效能輔助函式)
-    // 【核心效能修正】：GameRules 快取，0 毫秒讀取
+    #region Helpers 
     private CCSGameRules? GetGameRules()
     {
         if (_cachedGameRules != null) return _cachedGameRules;
@@ -495,7 +486,6 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         return null;
     }
 
-    // 統一的活躍玩家計算邏輯，避免代碼重複與 null 問題
     private int GetActivePlayerCount()
     {
         int count = 0;
