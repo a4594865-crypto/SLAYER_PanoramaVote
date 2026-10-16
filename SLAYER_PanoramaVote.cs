@@ -58,11 +58,47 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         "de_mirage", "de_inferno", "de_dust2", "de_nuke", "de_anubis", "de_ancient", "de_cache" 
     }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
-    private CCSGameRules? _cachedGameRules = null;
+    // ▼▼▼ 【0-GC 預先快取區】：消除執行期重複字串拼接、陣列與委派配置 ▼▼▼
+    private static readonly string _allowedMapsText = string.Join(", ", _allowedMaps);
+    private static readonly string[] _emptyRtvArgs = [".rtv"];
+
+    private static readonly string _colorWhite = ChatColors.White.ToString();
+    private static readonly string _colorGreen = ChatColors.Green.ToString();
+    private static readonly string _colorLime = ChatColors.Lime.ToString();
+    private static readonly string _colorRed = ChatColors.Red.ToString();
+    private static readonly string _colorLightRed = ChatColors.LightRed.ToString();
+    private static readonly string _colorDarkRed = ChatColors.DarkRed.ToString();
+    private static readonly string _colorOrange = ChatColors.Orange.ToString();
+    private static readonly string _colorYellow = ChatColors.Yellow.ToString();
+    private static readonly string _colorBlue = ChatColors.Blue.ToString();
+    private static readonly string _colorSilver = ChatColors.Silver.ToString();
+
+    private string[] _formattedJoinMessages = [];
+    private string _cachedRequiredPercentText = "80%";
+
+    private CCSGameRulesProxy? _cachedGameRulesProxy = null;
+    private YesNoVoteResult? _cachedVoteResultCallback;
+    private YesNoVoteHandler? _cachedVoteHandlerCallback;
+    // ▲▲▲ ▲▲▲ ▲▲▲
 
     public void OnConfigParsed(PanoramaVoteConfig config)
     {
         Config = config;
+        _cachedRequiredPercentText = $"{Math.Round(Config.RequiredVotePercentage * 100)}%";
+
+        // 【0-GC 優化】：在載入設定檔時一次性完成顏色標籤替換，玩家進服時 0 GC 直接印出
+        if (Config.JoinMessages is { Count: > 0 })
+        {
+            _formattedJoinMessages = new string[Config.JoinMessages.Count];
+            for (int i = 0; i < Config.JoinMessages.Count; i++)
+            {
+                _formattedJoinMessages[i] = ReplaceColorTags(Config.JoinMessages[i]);
+            }
+        }
+        else
+        {
+            _formattedJoinMessages = [];
+        }
     }
 
     public override void Load(bool hotReload)
@@ -70,6 +106,9 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         voteHandler = new CPanoramaVote(this); 
         _isMapChanging = false;
         _currentVoteType = VoteType.None;
+
+        _cachedVoteResultCallback = VoteResultCallback;
+        _cachedVoteHandlerCallback = VoteHandlerCallback;
         
         AddCommandListener("say", OnPlayerSay);
         AddCommandListener("say_team", OnPlayerSay);
@@ -84,15 +123,16 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
                 var p = Utilities.GetPlayerFromSlot(playerSlot);
                 if (p is { IsValid: true })
                 {
-                    foreach (var msg in Config.JoinMessages)
+                    // 【0-GC 優化】：直接讀取預先格式化好的快取陣列，免除每次進服跑 33 次 Replace
+                    foreach (var msg in _formattedJoinMessages)
                     {
-                        p.PrintToChat(ReplaceColorTags(msg));
+                        p.PrintToChat(msg);
                     }
                 }
             });
         });
 
-       RegisterEventHandler<EventRoundStart>((@event, info) =>
+        RegisterEventHandler<EventRoundStart>((@event, info) =>
         {
             if (GetGameRules() is { WarmupPeriod: false })
             {
@@ -108,7 +148,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
 
         RegisterListener<Listeners.OnMapStart>(mapName => 
         {
-            _cachedGameRules = null; 
+            _cachedGameRulesProxy = null; 
             _isMapChanging = false;
             _currentVoteType = VoteType.None;
             _lastMapVoteTime = -9999.0;      
@@ -128,6 +168,9 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         
         ReadOnlySpan<char> textSpan = info.GetArg(1).AsSpan().Trim('"').Trim();
         if (textSpan.IsEmpty) return HookResult.Continue;
+
+        // 【0-GC 極速短路】：本插件為 Strict Dot Only，若首字元不是 '.'，代表是一般聊天，1 個 CPU 指令瞬間放行！
+        if (textSpan[0] != '.') return HookResult.Continue;
 
         if (IsReadyCommand(textSpan))
         {
@@ -179,10 +222,15 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
                 return HookResult.Handled;
             }
 
-            ReadOnlySpan<char> argSpan = textSpan[(spaceIndex + 1)..];
-            if (argSpan.Equals("shuffle", StringComparison.OrdinalIgnoreCase) || argSpan.Equals("unshuffle", StringComparison.OrdinalIgnoreCase))
+            ReadOnlySpan<char> argSpan = textSpan[(spaceIndex + 1)..].Trim();
+            if (argSpan.Equals("shuffle", StringComparison.OrdinalIgnoreCase))
             {
-                Server.ExecuteCommand($"css_slayer_vote_internal {player.Slot} {argSpan.ToString()}");
+                Server.ExecuteCommand($"css_slayer_vote_internal {player.Slot} shuffle");
+                return HookResult.Handled;
+            }
+            if (argSpan.Equals("unshuffle", StringComparison.OrdinalIgnoreCase))
+            {
+                Server.ExecuteCommand($"css_slayer_vote_internal {player.Slot} unshuffle");
                 return HookResult.Handled;
             }
             
@@ -193,14 +241,14 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         return HookResult.Continue;
     }
 
-    private bool IsReadyCommand(ReadOnlySpan<char> text)
+    private static bool IsReadyCommand(ReadOnlySpan<char> text)
     {
         return text.Equals(".r", StringComparison.OrdinalIgnoreCase) || 
                text.Equals(".ready", StringComparison.OrdinalIgnoreCase) || 
                text.Equals(".unready", StringComparison.OrdinalIgnoreCase);
     }
 
-    private bool IsVoteStartCommand(ReadOnlySpan<char> text)
+    private static bool IsVoteStartCommand(ReadOnlySpan<char> text)
     {
         return text.Equals(".rtv", StringComparison.OrdinalIgnoreCase) || 
                text.Equals(".vote", StringComparison.OrdinalIgnoreCase);
@@ -213,19 +261,20 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         var player = Utilities.GetPlayerFromSlot(slot);
         if (player is not { IsValid: true }) return;
 
-        string action = info.GetArg(2).ToLower();
+        // 【0-GC 優化】：改用 ReadOnlySpan 比對，消除 .ToLower() 暫存字串配置
+        ReadOnlySpan<char> actionSpan = info.GetArg(2).AsSpan().Trim();
         
-        if (action == "rtv") 
+        if (actionSpan.Equals("rtv", StringComparison.OrdinalIgnoreCase)) 
         {
             string mapArg = info.GetArg(3);
-            string[] args = string.IsNullOrEmpty(mapArg) ? [".rtv"] : [".rtv", mapArg];
+            string[] args = string.IsNullOrEmpty(mapArg) ? _emptyRtvArgs : [".rtv", mapArg];
             ExecuteRtvLogic(player, args);
         }
-        else if (action == "shuffle") 
+        else if (actionSpan.Equals("shuffle", StringComparison.OrdinalIgnoreCase)) 
         {
             ExecuteShuffleVoteLogic(player);
         }
-        else if (action == "unshuffle") 
+        else if (actionSpan.Equals("unshuffle", StringComparison.OrdinalIgnoreCase)) 
         {
             ExecuteUnshuffleVoteLogic(player);
         }
@@ -263,7 +312,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         {
             player.PrintToChat($" {Prefix} 投 票 說 明 {ChatColors.Silver}[ {ChatColors.Green}限 熱 身 階 段 使 用 {ChatColors.Silver}]{ChatColors.White}");
             player.PrintToChat($" {Prefix} 使 用 方 法： {ChatColors.Yellow}.rtv de_mirage{ChatColors.White}");
-            player.PrintToChat($" {Prefix} 可 用 地 圖： {ChatColors.Yellow}{string.Join(", ", _allowedMaps)}{ChatColors.White}");
+            player.PrintToChat($" {Prefix} 可 用 地 圖： {ChatColors.Yellow}{_allowedMapsText}{ChatColors.White}");
             return;
         }
 
@@ -274,7 +323,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         if (!_allowedMaps.TryGetValue(inputMap, out string? matchedMap))
         {
             player.PrintToChat($" {Prefix} 伺 服 器 不 支 援 地 圖 [{args[1]}] ！");
-            player.PrintToChat($" {Prefix} 可 用 地 圖： {ChatColors.Yellow}{string.Join(", ", _allowedMaps)}");
+            player.PrintToChat($" {Prefix} 可 用 地 圖： {ChatColors.Yellow}{_allowedMapsText}");
             return;
         }
 
@@ -282,7 +331,14 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         _currentVoteType = VoteType.MapChange; 
         voteHandler.Init(); 
 
-        voteHandler.SendYesNoVoteToAll(Config.VoteDurationSeconds, player.Slot, "#SFUI_vote_changelevel", _targetMap, VoteResultCallback, VoteHandlerCallback);
+        voteHandler.SendYesNoVoteToAll(
+            Config.VoteDurationSeconds,
+            player.Slot,
+            "#SFUI_vote_changelevel",
+            _targetMap,
+            _cachedVoteResultCallback ??= VoteResultCallback,
+            _cachedVoteHandlerCallback ??= VoteHandlerCallback
+        );
 
         _lastMapVoteTime = Server.CurrentTime; 
         Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 投 票 換 圖 至 {ChatColors.Green}{_targetMap}{ChatColors.White}");
@@ -295,7 +351,14 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         _currentVoteType = VoteType.Shuffle; 
         voteHandler.Init(); 
         
-        voteHandler.SendYesNoVoteToAll(Config.VoteDurationSeconds, player.Slot, "#SFUI_vote_scramble_teams", "", VoteResultCallback, VoteHandlerCallback);
+        voteHandler.SendYesNoVoteToAll(
+            Config.VoteDurationSeconds,
+            player.Slot,
+            "#SFUI_vote_scramble_teams",
+            "",
+            _cachedVoteResultCallback ??= VoteResultCallback,
+            _cachedVoteHandlerCallback ??= VoteHandlerCallback
+        );
 
         _lastShuffleVoteTime = Server.CurrentTime; 
         Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 {ChatColors.Lime}隨 機 分 隊{ChatColors.White} 投 票");
@@ -308,7 +371,14 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         _currentVoteType = VoteType.Unshuffle; 
         voteHandler.Init(); 
         
-        voteHandler.SendYesNoVoteToAll(Config.VoteDurationSeconds, player.Slot, "#SFUI_Scoreboard_Undo", "", VoteResultCallback, VoteHandlerCallback);
+        voteHandler.SendYesNoVoteToAll(
+            Config.VoteDurationSeconds,
+            player.Slot,
+            "#SFUI_Scoreboard_Undo",
+            "",
+            _cachedVoteResultCallback ??= VoteResultCallback,
+            _cachedVoteHandlerCallback ??= VoteHandlerCallback
+        );
 
         _lastShuffleVoteTime = Server.CurrentTime; 
         Server.PrintToChatAll($" {Prefix} 玩 家 {ChatColors.Green}{player.PlayerName}{ChatColors.White} 發 起 了 {ChatColors.LightRed}取 消 隨 機 分 隊{ChatColors.White} 投 票");
@@ -384,11 +454,12 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
                 _isMapChanging = true; 
                 Server.PrintToChatAll($" {Prefix} 投 票 通 過！ {ChatColors.Green}5 秒 {ChatColors.White}後 更 換 地 圖 至 {ChatColors.Green}{_targetMap}");
                 
+                string centerMsg = $"投 票 通 過：5 秒 後 更 換 地 圖 {_targetMap}";
                 foreach (var p in Utilities.GetPlayers())
                 {
                     if (p is { IsValid: true, IsBot: false })
                     {
-                        p.PrintToCenter($"投 票 通 過：5 秒 後 更 換 地 圖 {_targetMap}");
+                        p.PrintToCenter(centerMsg);
                     }
                 }
                 
@@ -438,8 +509,7 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
             if (_currentVoteType == VoteType.Shuffle || _currentVoteType == VoteType.Unshuffle)
             {
                 string voteName = _currentVoteType == VoteType.Shuffle ? "洗 牌" : "取 消 洗 牌";
-                string requiredPercentText = $"{Math.Round(Config.RequiredVotePercentage * 100)}%";
-                Server.PrintToChatAll($" {Prefix} {voteName} 投 票 失 敗！需 達 {ChatColors.Green}{requiredPercentText}{ChatColors.Default} 玩 家 同 意");
+                Server.PrintToChatAll($" {Prefix} {voteName} 投 票 失 敗！需 達 {ChatColors.Green}{_cachedRequiredPercentText}{ChatColors.Default} 玩 家 同 意");
             }
             else if (_currentVoteType == VoteType.MapChange)
             {
@@ -473,20 +543,24 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
     #region Helpers 
     private CCSGameRules? GetGameRules()
     {
-        if (_cachedGameRules != null) return _cachedGameRules;
+        // 【0-GC 安全快取】：透過 CCSGameRulesProxy.IsValid 確保底層指標絕對安全有效
+        if (_cachedGameRulesProxy is { IsValid: true, GameRules: not null })
+        {
+            return _cachedGameRulesProxy.GameRules;
+        }
 
         foreach (var entity in Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules"))
         {
-            if (entity is { GameRules: not null } proxy)
+            if (entity is { IsValid: true, GameRules: not null } proxy)
             {
-                _cachedGameRules = proxy.GameRules;
-                return _cachedGameRules;
+                _cachedGameRulesProxy = proxy;
+                return proxy.GameRules;
             }
         }
         return null;
     }
 
-    private int GetActivePlayerCount()
+    private static int GetActivePlayerCount()
     {
         int count = 0;
         foreach (var p in Utilities.GetPlayers())
@@ -505,16 +579,16 @@ public partial class SLAYER_PanoramaVote : BasePlugin, IPluginConfig<PanoramaVot
         
         return input
             .Replace("{Prefix}", Prefix, StringComparison.OrdinalIgnoreCase)
-            .Replace("{White}", ChatColors.White.ToString(), StringComparison.OrdinalIgnoreCase)
-            .Replace("{Green}", ChatColors.Green.ToString(), StringComparison.OrdinalIgnoreCase)
-            .Replace("{Lime}", ChatColors.Lime.ToString(), StringComparison.OrdinalIgnoreCase)
-            .Replace("{Red}", ChatColors.Red.ToString(), StringComparison.OrdinalIgnoreCase)
-            .Replace("{LightRed}", ChatColors.LightRed.ToString(), StringComparison.OrdinalIgnoreCase)
-            .Replace("{DarkRed}", ChatColors.DarkRed.ToString(), StringComparison.OrdinalIgnoreCase)
-            .Replace("{Orange}", ChatColors.Orange.ToString(), StringComparison.OrdinalIgnoreCase)
-            .Replace("{Yellow}", ChatColors.Yellow.ToString(), StringComparison.OrdinalIgnoreCase)
-            .Replace("{Blue}", ChatColors.Blue.ToString(), StringComparison.OrdinalIgnoreCase)
-            .Replace("{Silver}", ChatColors.Silver.ToString(), StringComparison.OrdinalIgnoreCase);
+            .Replace("{White}", _colorWhite, StringComparison.OrdinalIgnoreCase)
+            .Replace("{Green}", _colorGreen, StringComparison.OrdinalIgnoreCase)
+            .Replace("{Lime}", _colorLime, StringComparison.OrdinalIgnoreCase)
+            .Replace("{Red}", _colorRed, StringComparison.OrdinalIgnoreCase)
+            .Replace("{LightRed}", _colorLightRed, StringComparison.OrdinalIgnoreCase)
+            .Replace("{DarkRed}", _colorDarkRed, StringComparison.OrdinalIgnoreCase)
+            .Replace("{Orange}", _colorOrange, StringComparison.OrdinalIgnoreCase)
+            .Replace("{Yellow}", _colorYellow, StringComparison.OrdinalIgnoreCase)
+            .Replace("{Blue}", _colorBlue, StringComparison.OrdinalIgnoreCase)
+            .Replace("{Silver}", _colorSilver, StringComparison.OrdinalIgnoreCase);
     }
     #endregion
 }
